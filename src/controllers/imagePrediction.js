@@ -37,7 +37,6 @@ const getShapePrediction = async (req, res) => {
         });
     }
 };
-
 module.exports = {
-    getShapePrediction,
+    getShapePrediction
 };
