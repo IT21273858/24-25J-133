@@ -8,7 +8,7 @@ Mobile and Simulation-based Approach to reduce the Dyslexia with children Learni
    ```
 2. Install the dependencies
     ```bash
-    pip install tensorflow numpy matplotlib opencv-python pillow
+    pip install tensorflow numpy matplotlib opencv-python pillow flask
     ```
     or
     ```bash
