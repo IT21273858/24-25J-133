@@ -30,8 +30,10 @@ model Children {
   id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String?
   email       String       @unique
-  passsword   String
-  proifle_img String?
+  password    String
+  profile_img String?
+  address     String?
+  phoneNumber String?
   level       String       @default("easy")
   parent_id   String       @db.ObjectId
   parent      Parent       @relation(fields: [parent_id], references: [id])

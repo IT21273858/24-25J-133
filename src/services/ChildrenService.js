@@ -1,120 +1,126 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const employeeModel = require('../models/employeeModel')
+const childrenModel = require('../models/childrenModel');
 const { Prisma } = require("@prisma/client");
-const sendemailService = require('../services/sendemailservices')
+const sendemailService = require('../services/sendemailservices');
 
-const getAllEmployees = async () => {
-    const employees = await employeeModel.findMany();
-    return employees;
+// Fetch all childrens and their associated children
+const getAllChildrens = async () => {
+    const childrens = await childrenModel.findMany({
+        include: {
+            parent: true, // Include children in the response
+            ChildLevel: true,  // Include childLevel in the response
+            GameScore: true // Include gameScore in the response
+        }
+    });
+    return childrens;
 };
 
-const getEmployeeById = async (id) => {
-    return await employeeModel.findUnique({ where: { id } });
+// Fetch a specific child by their ID
+const getChildById = async (id) => {
+    return await childrenModel.findUnique({
+        where: { id }, // Find by unique ID
+        include: {
+            parent: true, // Include children in the response
+            ChildLevel: true,  // Include childLevel in the response
+            GameScore: true // Include gameScore in the response
+        }
+    });
 };
 
-const createEmployee = async (employeeDetails) => {
-    console.log("Income to create an employee.....");
-    const hashedPassword = await bcrypt.hash(employeeDetails.password, 10);
+// Create a new child
+const createChild = async (childDetails) => {
+    console.log("Incoming request to create a child...");
+
+    // Hash the child password
+    const hashedPassword = await bcrypt.hash(childDetails.password, 10);
     return new Promise((resolve, reject) => {
-        employeeModel.findUnique({ where: { email: employeeDetails.email } }).then((isfound) => {
+        // Check if the email already exists in the database
+        childrenModel.findUnique({ where: { email: childDetails.email } }).then((isfound) => {
             if (isfound) {
-                console.log("Sorry... credentials already exist... \n try to login :)");
-                reject(new Error("P2002"));
+                console.log("Email already exists. Prompting user to login.");
+                reject(new Error("P2002")); // Error for duplicate entry
             } else {
                 const data = {
-                    name: employeeDetails.name,
-                    email: employeeDetails.email,
+                    name: childDetails.name,
+                    email: childDetails.email,
                     password: hashedPassword,
-                    address: employeeDetails.address,
-                    phoneNumber: employeeDetails.phoneNumber,
-                    profile_img: employeeDetails.profile_img,
+                    profile_img: childDetails.profile_img,
+                    parent_id: childDetails.parent_id,
+                    address: childDetails.address,
+                    phoneNumber: childDetails.phoneNumber,
                 };
-                employeeModel.create({ data }).then((res) => {
-                    console.log("employee has been created sucessfully..");
-                    console.log(res);
+                // Create a new child in the database
+                childrenModel.create({ data }).then((res) => {
+                    console.log("Child created successfully:", res);
                     resolve(true);
-                })
-                    .catch((error) => {
-                        console.log("Sorry cannot create an account for you... :(");
-                        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-                            if (error.code === 'P2002') {
-                                reject(new Error("P2002"));
-                            } else {
-                                reject(new Error("Prisma error"));
-                            }
-                        } else {
-                            reject(new Error("Unexpected error"));
-                        }
-                    });
+                }).catch((error) => {
+                    console.log("Failed to create child account.", error);
+                    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                        console.log("Error in child creation", error);
+                        reject(new Error("P2002")); // Duplicate error
+                    } else {
+                        console.log("Error in child creation", error);
+                        reject(new Error("Unexpected error"));
+                    }
+                });
             }
         }).catch((error) => {
+            console.log("Error in child creation", error);
             reject(new Error("Unexpected error"));
         });
     });
 };
 
+// Update child details
+const updateChild = async (id, childDetails) => {
+    const updateData = { ...childDetails };
 
-const updateEmployee = async (id, employeeDetails) => {
-    const updateData = { ...employeeDetails };
-
-    if (employeeDetails.password) {
-        updateData.password = await bcrypt.hash(employeeDetails.password, 10);
+    // Hash the password if it's being updated
+    if (childDetails.password) {
+        updateData.password = await bcrypt.hash(childDetails.password, 10);
     }
-    const isfound = await employeeModel.findUnique({ where: { id } })
+
+    // Check if the child exists
+    const isfound = await childrenModel.findUnique({ where: { id } });
     if (isfound) {
-        new Promise(async (resolve, reject) => {
-            employeeModel.update({
+        return new Promise((resolve, reject) => {
+            childrenModel.update({
                 where: { id },
                 data: updateData,
-            }).then((response) => { resolve(response) }).catch((error) => { reject(error) })
-        })
-        return true
-    }
-    else {
-        return false
-    }
-};
-
-const deleteEmployee = async (id, userId) => {
-    console.log("Income to delete Employee");
-
-    const employee = await employeeModel.findUnique({ where: { id } })
-    try {
-        if (employee) {
-            console.log("Employee found");
-
-            await employeeModel.delete({ where: { id } }).then((admin) => {
-                console.log("Employee deleted");
-                return admin
-            })
-                .catch((error) => {
-                    console.log(error);
-                    return error
-                })
-        }
-        else {
-            console.log("Employee not found");
-            return ('Employee not found')
-        }
-        // if (admin.Role == 'Admin') {
-        // }
-        // else {
-        //     console.log("Not an Admin");
-
-        //     return ('Not an Admin')
-        // }
-    }
-    catch (error) {
-        if (error === 'Not an admin') {
-            console.error("User is not authorized to delete");
-        } else {
-            console.error("Error deleting user:", error);
-        }
-        throw error;
+            }).then((response) => {
+                resolve(response);
+            }).catch((error) => {
+                reject(error);
+            });
+        });
+    } else {
+        return false; // Child not found
     }
 };
 
+// Delete a child by ID
+const deleteChild = async (id, userId) => {
+    console.log("Incoming request to delete child");
+
+    const child = await childrenModel.findUnique({ where: { id } });
+    if (child) {
+        try {
+            console.log("child found, proceeding to delete...");
+            await childrenModel.delete({ where: { id } });
+            console.log("child deleted successfully");
+            return true;
+        } catch (error) {
+            console.error("Error while deleting child:", error);
+            return error;
+        }
+    } else {
+        console.log("child not found");
+        return 'Child not found';
+    }
+};
+
+// Generate a random OTP of specified length
 function generateOTP(length = 6) {
     const digits = '0123456789';
     let otp = '';
@@ -124,74 +130,69 @@ function generateOTP(length = 6) {
     return otp;
 }
 
+// Handle forgot password functionality
 const forgotpassword = async (email) => {
-    console.log("Incoming request to forgot password....");
+    console.log("Processing forgot password request...");
 
     try {
-        const employee = await employeeModel.findUnique({ where: { email: email } });
-
-        if (!employee) {
-            console.log("Employee not found");
+        // Check if the child exists
+        const child = await childrenModel.findUnique({ where: { email } });
+        if (!child) {
+            console.log("Child not found");
             return 'Not Found';
         }
 
-        const id = employee.id;
-        console.log("Employee found...");
+        const id = child.id;
+        console.log("Child found, generating OTP...");
 
+        // Generate OTP and set expiry time
         const otp = generateOTP();
-        await employeeModel.update({
+        await childrenModel.update({
             where: { id },
-            data: { forgot_code: otp, code_expiary: new Date(Date.now() + 10 * 60000) }  // 10 minutes expiry
+            data: { forgot_code: otp, code_expiary: new Date(Date.now() + 10 * 60000) } // 10 minutes expiry
         });
 
-        console.log("Forgot code and expiry updated...");
+        console.log("Forgot code and expiry updated.");
 
-        const response = await sendemailService.sendForgotCode(email, otp, employee.name);
-        console.log("Email sending response:", response);
-
+        // Send OTP via email
+        const response = await sendemailService.sendForgotCode(email, otp, child.name);
         if (response === 'OTP Sent') {
-            console.log("OTP Sent for forgot request");
+            console.log("OTP sent successfully.");
             return 'OTP Sent';
         } else {
-            console.log("Error in sending forgot OTP email");
+            console.log("Error while sending OTP.");
             return 'Error in Mailing';
         }
-
     } catch (error) {
-        console.log("Error in processing forgot password request:", error);
+        console.error("Error in forgot password process:", error);
         return 'Error in processing request';
     }
 };
 
-
+// Verify OTP and reset password
 const verifyForgototp = async (email, otp, password) => {
     try {
-        console.log("Incoming request to verify the forgot OTP code...", email, otp, password);
+        console.log("Verifying OTP for forgot password request...");
 
-        // Fetch the employee record by email
-        const employee = await employeeModel.findUnique({ where: { email: email } });
+        // Fetch child details by email
+        const child = await childrenModel.findUnique({ where: { email } });
 
-        if (!employee) {
-            // Handle if no employee is found
-            console.log("Employee not found");
-            return { message: 'Employee not found', status: false };
+        if (!child) {
+            console.log("child not found.");
+            return { message: 'child not found', status: false };
         }
 
-        // Check if the OTP is valid and not expired
-        if (new Date() < employee.code_expiary && otp === employee.forgot_code) {
-            console.log("OTP is valid, resetting password...");
-
-            // Update the employee's password and clear OTP and expiry
-            const hpass = await bcrypt.hash(password, 10);
-            await employeeModel.update({
+        // Validate OTP and expiry
+        if (new Date() < child.code_expiary && otp === child.forgot_code) {
+            console.log("Valid OTP. Resetting password...");
+            const hashedPassword = await bcrypt.hash(password, 10);
+            await childrenModel.update({
                 where: { email },
-                data: { forgot_code: null, code_expiary: null, password: hpass }
+                data: { forgot_code: null, code_expiary: null, password: hashedPassword }
             });
-
-            console.log("Password updated successfully");
             return { message: 'Success', status: true };
         } else {
-            console.log("Invalid OTP or expired code");
+            console.log("Invalid OTP or expired code.");
             return { message: 'Invalid OTP or expired code', status: false };
         }
     } catch (error) {
@@ -200,51 +201,46 @@ const verifyForgototp = async (email, otp, password) => {
     }
 };
 
-
+// Login functionality
 const login = async (email, password) => {
-    console.log("Request income to login....");
+    console.log("Processing login request...");
     try {
-        const employee = await employeeModel.findUnique({
-            where: {
-                email: email
-            }
-        })
-        //console.log("Employee is", employee, password);
-        const matchs = await bcrypt.compare(password, employee.password);
+        // Find child by email
+        const child = await childrenModel.findUnique({ where: { email } });
 
-        if (employee && matchs) {
-            console.log("Login sucess.... sending token.....");
-            const token = generateToken(employee);
+        if (child && await bcrypt.compare(password, child.password)) {
+            console.log("Login successful, generating token...");
+            const token = generateToken(child);
             return { token };
         } else {
-            console.log("Invalid user credentials");
-            return email
+            console.log("Invalid credentials.");
+            return null;
         }
-
     } catch (error) {
-
-        console.log("Error while login....");
-        throw new Error("Error while login");
+        console.error("Error during login:", error);
+        throw new Error("Error during login");
     }
+};
 
-
-}
-
-// Generating JWT Token for successful login
-function generateToken(employee) {
-    console.log("Creating token....");
+// Generate JWT token
+function generateToken(child) {
+    console.log("Generating JWT token...");
     const secretKey = process.env.JWT_SECRET; // Use environment variable for the secret key
-    const expiresIn = "1h";
-    console.log("Token generated");
-    return jwt.sign({ user: employee.id, name: employee.name, img: employee.profile_img }, secretKey, { expiresIn });
+    const expiresIn = "1h"; // Token expiry time
+    return jwt.sign(
+        { user: child.id, name: child.name, img: child.profile_img },
+        secretKey,
+        { expiresIn }
+    );
 }
 
+// Export the service functions
 module.exports = {
-    getAllEmployees,
-    getEmployeeById,
-    createEmployee,
-    updateEmployee,
-    deleteEmployee,
+    getAllChildrens,
+    getChildById,
+    createChild,
+    updateChild,
+    deleteChild,
     login,
     forgotpassword,
     verifyForgototp
