@@ -24,7 +24,8 @@ const createGame = async (gameDetails) => {
         const data = {
             name: gameDetails.name,
             level: gameDetails.level,
-            password: hashedPassword,
+            model_type: gameDetails.model_type,
+            instructions: gameDetails.instructions,
             description: gameDetails.description,
             play_time: gameDetails.play_time,
         };
