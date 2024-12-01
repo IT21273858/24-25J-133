@@ -43,6 +43,7 @@ const createParent = (req, res) => {
     try {
         // Use parent service to create a new parent
         const parent = parentService.createParent(req.body);
+
         parent
             .then(() => {
                 // Respond with success status when parent is created
@@ -53,7 +54,7 @@ const createParent = (req, res) => {
                 if (error.message === 'P2002') {
                     res.status(403).json({ status: false, message: "New user cannot be created with this email", code: "P2002" });
                 } else {
-                    res.status(404).json({ status: false, message: "Parent creation unsuccessful" });
+                    res.status(404).json({ status: false, message: "Parent creation unsuccessful Please Provide full details", code: "P4002" });
                 }
             });
     } catch (error) {

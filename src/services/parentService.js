@@ -48,15 +48,18 @@ const createParent = async (parentDetails) => {
                     console.log("Parent created successfully:", res);
                     resolve(true);
                 }).catch((error) => {
-                    console.log("Failed to create parent account.");
+                    console.log("Failed to create parent account.", error);
                     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                        console.log("Error in parent creation", error);
                         reject(new Error("P2002")); // Duplicate error
                     } else {
+                        console.log("Error in parent creation", error);
                         reject(new Error("Unexpected error"));
                     }
                 });
             }
-        }).catch(() => {
+        }).catch((error) => {
+            console.log("Error in parent creation", error);
             reject(new Error("Unexpected error"));
         });
     });
