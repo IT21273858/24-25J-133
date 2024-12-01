@@ -12,3 +12,63 @@ model User {
   email String  @unique
   name  String?
 }
+
+model Parent {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  email       String     @unique
+  password    String
+  profile_img String?
+  address     String?
+  phoneNumber String?
+  Children    Children[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Children {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String?
+  email       String       @unique
+  passsword   String
+  proifle_img String?
+  level       String       @default("easy")
+  parent_id   String       @db.ObjectId
+  parent      Parent       @relation(fields: [parent_id], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  ChildLevel  ChildLevel[]
+  GameScore   GameScore[]
+}
+
+model ChildLevel {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  level       Int      @default(0)
+  children_id String   @db.ObjectId
+  children    Children @relation(fields: [children_id], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Game {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  level       String      @default("easy")
+  description String?
+  play_time   String      @default("10")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  GameScore   GameScore[]
+}
+
+model GameScore {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  score       Float    @default(0)
+  game_id     String   @db.ObjectId
+  game        Game     @relation(fields: [game_id], references: [id])
+  children_id String   @db.ObjectId
+  children    Children @relation(fields: [children_id], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
