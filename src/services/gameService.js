@@ -93,17 +93,22 @@ const deleteGame = async (id, userId) => {
 
 const assignGameToChild = async (childId, level) => {
     try {
-        // Fetch a random game for the given level
-        const game = await prisma.game.findFirst({
+        // Fetch all games for the given level
+        const games = await prisma.game.findMany({
             where: { level },
         });
 
-        if (!game) {
+        // Check if any games are available
+        if (games.length === 0) {
             return {
                 success: false,
                 message: "No games available for the specified level.",
             };
         }
+
+        // Select a random game
+        const randomIndex = Math.floor(Math.random() * games.length);
+        const game = games[randomIndex];
 
         // Check if a ChildLevel record exists
         let childLevel = await prisma.childLevel.findFirst({
@@ -142,6 +147,7 @@ const assignGameToChild = async (childId, level) => {
         throw new Error("An error occurred while assigning the game.");
     }
 };
+
 
 // Fetch Assigned game for a child
 const getAssignedGameForChild = async (childId) => {
