@@ -101,11 +101,111 @@ const deleteGame = async (req, res) => {
         res.status(500).json({ status: false, error: 'Game could not be deleted' });
     }
 };
+
+
+// Controller to assign a game to a child
+const assignGameToChild = async (req, res) => {
+    const { childId, level } = req.body;
+
+    // Validate input
+    if (!childId || !level) {
+        return res.status(400).json({
+            status: false,
+            message: "Both 'childId' and 'level' are required.",
+        });
+    }
+
+    try {
+        // Call service function to assign game
+        const assignedGame = await gameService.assignGameToChild(childId, level);
+
+        if (assignedGame.success) {
+            return res.status(200).json({
+                status: true,
+                message: "Game assigned successfully.",
+                data: assignedGame.data,
+            });
+        } else {
+            return res.status(404).json({
+                status: false,
+                message: assignedGame.message || "Failed to assign the game.",
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            status: false,
+            message: "An error occurred while assigning the game.",
+            error: error.message,
+        });
+    }
+};
+
+
+// Get Assigned game for a child
+const getAssignedGame = async (req, res) => {
+    const { childId } = req.params;
+
+    try {
+        const result = await gameService.getAssignedGameForChild(childId);
+
+        if (result.success) {
+            return res.status(200).json({
+                status: true,
+                data: result.data,
+                message: result.message,
+            });
+        } else {
+            return res.status(404).json({
+                status: false,
+                message: result.message,
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching assigned game:", error.message);
+        return res.status(500).json({
+            status: false,
+            error: "An error occurred while fetching the assigned game.",
+        });
+    }
+};
+
+// Veirfy Game completion
+const verifyGameCompletion = async (req, res) => {
+    const { childId, gameId, gameStatus } = req.body; // Provide game status as "won" or "lost"
+
+    try {
+        const result = await gameService.verifyGameAndUpdateLevel(childId, gameId, gameStatus);
+
+        if (result.success) {
+            return res.status(200).json({
+                status: true,
+                data: result.data,
+                message: result.message,
+            });
+        } else {
+            return res.status(400).json({
+                status: false,
+                message: result.message,
+            });
+        }
+    } catch (error) {
+        console.error("Error verifying game completion:", error.message);
+        return res.status(500).json({
+            status: false,
+            error: "An error occurred while verifying the game completion.",
+        });
+    }
+};
+
+
 // Export all controllers
 module.exports = {
     getAllGames,
     getGameById,
     createGame,
     updateGame,
-    deleteGame
+    deleteGame,
+    assignGameToChild,
+    getAssignedGame,
+    verifyGameCompletion
 };

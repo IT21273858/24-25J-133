@@ -44,23 +44,28 @@ model Children {
 }
 
 model ChildLevel {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  level       Int      @default(0)
-  children_id String   @db.ObjectId
-  children    Children @relation(fields: [children_id], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  level           Int      @default(0)
+  children_id     String   @db.ObjectId
+  children        Children @relation(fields: [children_id], references: [id])
+  current_game_id String?  @db.ObjectId
+  game            Game?    @relation(fields: [current_game_id], references: [id]) // Add this relation
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Game {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  level       String      @default("easy")
-  description String?
-  play_time   String      @default("10")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  GameScore   GameScore[]
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  level        String       @default("easy")
+  description  String?
+  play_time    String       @default("10") // Estimated play time
+  model_type   String       @default("") // Type of model used (e.g., "shape", "pattern")
+  instructions String? // Game instructions
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  GameScore    GameScore[]
+  ChildLevel   ChildLevel[]
 }
 
 model GameScore {
