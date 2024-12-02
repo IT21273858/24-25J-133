@@ -218,12 +218,19 @@ const verifyGameAndUpdateLevel = async (childId, gameId, gameStatus, completionT
         let score = 0;
 
         if (completionTime && playTime) {
-            const timeDifference = Math.max(0, playTime - completionTime);
-            score = (timeDifference / playTime) * 100; // Normalize score to a percentage
+            if (completionTime === playTime) {
+                // Reward perfect timing
+                score = 100; // Full score for completing exactly on time
+            } else if (completionTime < playTime) {
+                // If completion time is less than play time
+                const timeDifference = playTime - completionTime;
+                score = (timeDifference / playTime) * 100; // Normalize score to a percentage
+            } else {
+                // If completion time exceeds play time
+                const overrunPercentage = (completionTime / playTime) * 100; // Calculate overrun percentage
+                score = Math.max(0, 100 - overrunPercentage); // Deduct penalty from 100
+            }
         }
-
-        // Ensure the score is between 0 and 100
-        score = Math.max(0, Math.min(score, 100));
 
         // Add a GameScore entry
         await prisma.gameScore.create({
@@ -276,6 +283,7 @@ const verifyGameAndUpdateLevel = async (childId, gameId, gameStatus, completionT
         throw new Error("An error occurred while verifying the game or updating the level.");
     }
 };
+
 
 
 // Execute a game based on the model_type
