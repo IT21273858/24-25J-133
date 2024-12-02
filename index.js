@@ -2,6 +2,7 @@ var express = require('express');
 var app = express();
 require('dotenv').config();
 var routes = require('./routes/routes');
+var readRoutes = require('./routes/routesRead')
 const cors = require('cors');
 const { connectToDatabase } = require('./src/utils/db');
 const PORT = process.env.PORT|| 8080;
@@ -28,6 +29,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use('/read',readRoutes)
 app.use(routes);
 
 const startServer = async () => {
