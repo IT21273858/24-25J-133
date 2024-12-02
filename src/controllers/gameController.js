@@ -200,10 +200,14 @@ const verifyGameCompletion = async (req, res) => {
 //  Execute a game
 const executeGame = async (req, res) => {
     const { childId } = req.params;
-
+    console.log("Incoming request to execute game", req.params);
+    
+    console.log("Request received for executing game", req.body);
+    
     try {
         // Retrieve the assigned game for the child
         const assignedGameResult = await gameService.getAssignedGameForChild(childId);
+        console.log("Assigned game result:", assignedGameResult);
 
         if (!assignedGameResult.success) {
             return res.status(404).json({
@@ -214,8 +218,17 @@ const executeGame = async (req, res) => {
 
         const { currentGame } = assignedGameResult.data;
 
+        // Validate if the game is of type "shape" and requires an image
+        if (currentGame.model_type === "shape" && !req.file) {
+            return res.status(400).json({
+                status: false,
+                message: "Shape game requires an image file. Please upload an image.",
+            });
+        }
+
         // Execute the game based on its model_type
         const executionResult = await gameService.executeGame(currentGame, req);
+        console.log("Execution result:", executionResult);
 
         if (executionResult.success) {
             return res.status(200).json({
@@ -239,6 +252,7 @@ const executeGame = async (req, res) => {
         });
     }
 };
+
 
 
 // Export all controllers

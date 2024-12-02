@@ -44,7 +44,7 @@ router.delete('/games/delete/:id', GameController.deleteGame);
 router.post('/games/assign-game', GameController.assignGameToChild);
 router.get('/games/getassigned-game/:id', GameController.getAssignedGame);
 router.post('/games/verify-gamecompletion', GameController.verifyGameCompletion)
-router.post('/games/execute-game/:id', GameController.executeGame)
+router.post('/games/execute-game/:id', upload.single("image"),GameController.executeGame)
 
 // GameScore Route
 router.get('/gamescore/getAll', GameScoreController.getAllGameScores);

@@ -324,6 +324,8 @@ const executeGame = async (gameDetails, req = null) => {
                 throw new Error("Shape game requires an image file (request missing).");
             }
             const result = await predictShape(req);
+            console.log("Shape game executed successfully:", result);
+            
             if (result.success) {
                 return {
                     success: true,
