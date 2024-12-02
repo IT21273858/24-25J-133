@@ -5,6 +5,7 @@ const imagePredictionController = require('../src/controllers/imagePrediction')
 const patternPredictionController = require('../src/controllers/patternPrediction')
 const ParentController = require('../src/controllers/parentController')
 const ChildrenController = require('../src/controllers/childrenController')
+const GameController = require('../src/controllers/gameController')
 const router = express.Router();
 
 // Image Prediction Routes
@@ -32,6 +33,17 @@ router.delete('/childrens/delete/:id', ChildrenController.deleteChild);
 router.post('/childrens/login', ChildrenController.login);
 router.post('/childrens/forgot', ChildrenController.forgotChild);
 router.post('/childrens/verifyotp', ChildrenController.verifyotp);
+
+// Game Route
+router.get('/games/getAll', GameController.getAllGames);
+router.get('/games/get/:id', GameController.getGameById);
+router.post('/games/create', GameController.createGame);
+router.patch('/games/update/:id', GameController.updateGame);
+router.delete('/games/delete/:id', GameController.deleteGame);
+router.post('/games/assign-game', GameController.assignGameToChild);
+router.get('/games/getassigned-game/:id',GameController.getAssignedGame);
+router.post('/games/verify-gamecompletion',GameController.verifyGameCompletion)
+
 
 module.exports = router;
 
