@@ -171,10 +171,10 @@ const getAssignedGame = async (req, res) => {
 
 // Veirfy Game completion
 const verifyGameCompletion = async (req, res) => {
-    const { childId, gameId, gameStatus } = req.body; // Provide game status as "won" or "lost"
+    const { childId, gameId, gameStatus, completionTime } = req.body; // Provide game status as "won" or "lost"
 
     try {
-        const result = await gameService.verifyGameAndUpdateLevel(childId, gameId, gameStatus);
+        const result = await gameService.verifyGameAndUpdateLevel(childId, gameId, gameStatus, completionTime);
 
         if (result.success) {
             return res.status(200).json({
@@ -197,6 +197,49 @@ const verifyGameCompletion = async (req, res) => {
     }
 };
 
+//  Execute a game
+const executeGame = async (req, res) => {
+    const { childId } = req.params;
+
+    try {
+        // Retrieve the assigned game for the child
+        const assignedGameResult = await gameService.getAssignedGameForChild(childId);
+
+        if (!assignedGameResult.success) {
+            return res.status(404).json({
+                status: false,
+                message: assignedGameResult.message,
+            });
+        }
+
+        const { currentGame } = assignedGameResult.data;
+
+        // Execute the game based on its model_type
+        const executionResult = await gameService.executeGame(currentGame, req);
+
+        if (executionResult.success) {
+            return res.status(200).json({
+                status: true,
+                message: executionResult.message,
+                data: executionResult.data,
+            });
+        } else {
+            return res.status(400).json({
+                status: false,
+                message: executionResult.message,
+                error: executionResult.error,
+            });
+        }
+    } catch (error) {
+        console.error("Error executing game:", error.message);
+        return res.status(500).json({
+            status: false,
+            message: "An error occurred while executing the game.",
+            error: error.message,
+        });
+    }
+};
+
 
 // Export all controllers
 module.exports = {
@@ -207,5 +250,6 @@ module.exports = {
     deleteGame,
     assignGameToChild,
     getAssignedGame,
-    verifyGameCompletion
+    verifyGameCompletion,
+    executeGame
 };
