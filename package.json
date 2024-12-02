@@ -4,11 +4,11 @@
   "description": "Mobile and Simulation-based Approach to reduce the Dyslexia with children Learning Disabilities",
   "main": "index.js",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "npx prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "startall": "concurrently \"npm run start\" \"python flaskpython.py\""
+    "startall": "concurrently \"npm run start\" \"python3 flaskpython.py\""
   },
   "keywords": [],
   "author": "",

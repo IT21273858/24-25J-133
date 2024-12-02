@@ -5,6 +5,7 @@ const imagePredictionController = require('../src/controllers/imagePrediction')
 const patternPredictionController = require('../src/controllers/patternPrediction')
 const ParentController = require('../src/controllers/parentController')
 const identifyShapeController = require('../src/controllers/identifyShape')
+const predictWordController = require('../src/controllers/predictWord')
 const ChildrenController = require('../src/controllers/childrenController')
 const GameController = require('../src/controllers/gameController')
 const router = express.Router();
@@ -17,6 +18,9 @@ router.post("/predict-pattern", patternPredictionController.getPatternPrediction
 
 //Identify Shape Route
 router.post("/identify-shape", identifyShapeController.getIdentifyShape);
+
+// Identify generate a word 
+router.get('/generate-word', predictWordController.getGenerateWord);
 
 // Parent Route
 router.get('/parents/getAll', ParentController.getAllParents);

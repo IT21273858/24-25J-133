@@ -3,17 +3,24 @@ const identifyShapeService = require('../services/IdentifyShape');
 const getIdentifyShape = async (req, res) => {
     try {
         // Check if imagePath is provided in the request body
-        const { imagePath } = req.body;
-        
+        const { imagePath, displayTime = 5 } = req.body; // Default displayTime to 5 if not provided
 
         // Call the identify shape service
         const identificationResult = await identifyShapeService.identifyShape();
         console.log(identificationResult);
-        
 
         // Handle the response
         if (identificationResult && identificationResult.success) {
             console.log("Shape Identification Result:", identificationResult.data);
+
+            // Log when the shape will be hidden
+            console.log(`Shape will be hidden after ${displayTime} seconds.`);
+
+            // Set a timeout for hiding the shape after displayTime (simulating the hide effect)
+            setTimeout(() => {
+                console.log("Shape is now hidden after the display time ends.");
+            }, displayTime * 1000); // Convert displayTime to milliseconds
+
             return res.status(200).json({
                 status: true,
                 identifiedShape: identificationResult.data,

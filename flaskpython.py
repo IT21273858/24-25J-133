@@ -4,6 +4,11 @@ import numpy as np
 import cv2
 import os
 import random
+import base64
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+import pickle
+from transformers import BertTokenizer
+
 
 # Suppress TensorFlow logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -21,12 +26,28 @@ pattern_model.compile()  # Compile the model to suppress warnings
 shape_generation_model = tf.keras.models.load_model("./pickle/shape_generation_model.h5")
 shape_generation_model.compile()  # Compile the model to suppress warnings
 
+word_model = tf.keras.models.load_model("./pickle/predict_word_model.h5")
+word_model.compile()
+
+
+# Load the pre-trained tokenizer
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+print("Tokenizer saved successfully!")
+
 # Define shape mappings
 shape_mapping = {0: "square", 1: "circle", 2: "triangle"}
 reverse_mapping = {v: k for k, v in shape_mapping.items()}
 
 # Define class names for image prediction
 class_names = ["circle", "square", "triangle"]
+
+# Word levels
+word_levels = {
+    "Level 1": ['at', 'in', 'it', 'on', 'up', 'to'],
+    "Level 2": ['cat', 'dog', 'bat', 'sun', 'fun', 'run'],
+    "Level 3": ['love', 'code', 'kind', 'game', 'home', 'star'],
+    "Level 4": ['train', 'apple', 'table', 'chair', 'house', 'robot']
+}
 
 # Shape generation
 
@@ -65,6 +86,8 @@ def generate_shape_from_model(shape_type=None):
     img = img / 255.0
     return img, shape_type
 
+
+
 def preprocess_imagegen(image_path):
     img = cv2.imread(image_path)
     img = cv2.resize(img, (128, 128))
@@ -72,6 +95,22 @@ def preprocess_imagegen(image_path):
     img = np.expand_dims(img, axis=0)  # Add batch dimension
     return img
 
+
+# Preprocess words for prediction
+
+from transformers import BertTokenizer
+import numpy as np
+
+# Load BertTokenizer
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+def preprocess_word(word):
+    # Tokenize using Hugging Face BertTokenizer
+    tokens = tokenizer.encode(word, max_length=10, padding='max_length', truncation=True, return_tensors='tf')
+    return np.array(tokens)
+
+print(f"Tokenizer type: {type(tokenizer)}")
+print(f"Sample word sequence: {tokenizer.texts_to_sequences(['test']) if hasattr(tokenizer, 'texts_to_sequences') else 'Not supported'}")
 
 
 #  IMAGE PREDICTION 
@@ -189,7 +228,45 @@ def predict_pattern():
 
 
 import base64
+import time
 
+@app.route("/generate-word", methods=["GET"])
+def generate_word():
+    try:
+        random_level = random.choice(list(word_levels.keys()))
+        random_word = random.choice(word_levels[random_level])
+
+        # Set display time based on the level
+        if random_level == "Level 1":
+            display_time = 3  # Easy: 3 seconds
+        elif random_level == "Level 2":
+            display_time = 4  # Medium: 4 seconds
+        elif random_level == "Level 3":
+            display_time = 5  # Hard: 5 seconds
+        elif random_level == "Level 4":
+            display_time = 6  # Very hard: 6 seconds
+        else:
+            display_time = 3  # Default to 3 seconds if level is unknown
+
+        # Display the word
+        print(f"Generated word: {random_word}, Displaying for {display_time} seconds.")
+
+        # Sleep for the duration of display time
+        time.sleep(display_time)
+
+        # Log when the display time ends
+        print("Word display time end")
+
+        return jsonify({
+            "word": random_word,
+            "true_level": random_level,
+            "display_time": display_time
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    
 @app.route("/generate-and-predict", methods=["GET"])
 def generate_and_predict():
     try:
@@ -215,18 +292,23 @@ def generate_and_predict():
         # Delete the temporary image file after encoding
         os.remove(temp_image_path)
 
+        # Optionally, you can add a query parameter `display_time` for how long to display the shape.
+        display_time = int(request.args.get('display_time', 5))  # Default to 5 seconds if not specified.
+
         print(f"Generated Shape: {true_shape}")
         print(f"Predicted Shape: {predicted_class} with Confidence: {confidence:.2f}")
 
-        # Return JSON response including Base64 image
+        # Return JSON response including Base64 image and the timestamp
         return jsonify({
             "true_shape": true_shape,
             "predicted_shape": predicted_class,
             "confidence": float(confidence),
-            "image_base64": base64_image
+            "image_base64": base64_image,
+            "hide_after":  display_time  # The shape will be hidden after `display_time` seconds
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(port=5000)
