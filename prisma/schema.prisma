@@ -99,6 +99,7 @@ model Assessment {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   userId       String
   Score        Float
+  wordgiven    String?
   checkmeasure String
   difficulty   String   @default("LOW")
   timestamp    DateTime @default(now())

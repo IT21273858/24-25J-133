@@ -1,3 +1,4 @@
+from nltk.corpus import words
 from flask import Flask, request, jsonify
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -7,6 +8,9 @@ import os
 from diffusers import DiffusionPipeline
 import torch
 from PIL import Image
+import random
+import nltk
+import syllapy
 
 import base64
 import random
@@ -21,6 +25,7 @@ app = Flask(__name__)
 
 # stable-diffustion-pipleine-path
 PIPELINE_DIR = "./stable_diffusion_pipeline"
+nltk.download('words')
 
 
 # Load the models
@@ -252,70 +257,31 @@ def generate_image():
         return jsonify({"message": "Image generated Faild", "error": e}), 500
 
 
-#
-##
-# READ _ IMAGE GENERATION*(Stable Diffusion)
+def categorize_difficulty(word):
+    syllables_count = syllapy.count(word)
 
-# inizalize stable diffustion pipeline
-
-
-def initialize_and_save_pipeline():
-    print("Initializing the pipeline...")
-    model_name = "CompVis/stable-diffusion-v1-4"
-
-    # Load the pipeline
-    pipe = DiffusionPipeline.from_pretrained(
-        model_name, torch_dtype=torch.float16)
-    pipe.to("cuda")  # Move to GPU for faster inference
-    # pipe.to("cpu")  # Move to GPU for faster inference
-
-    # Save the pipeline
-    print("Saving the pipeline...")
-    pipe.save_pretrained(PIPELINE_DIR)
-    print("Pipeline saved!")
-    return pipe
-
-# load stable diffustion
+    # Classify difficulty based on length and syllables
+    if len(word) <= 4 and syllables_count <= 2:
+        return 'Easy'
+    elif len(word) <= 7 and syllables_count <= 3:
+        return 'Medium'
+    else:
+        return 'Hard'
 
 
-def load_pipeline():
-    if not os.path.exists(PIPELINE_DIR):
-        print("Pipeline not found! Initializing and saving pipeline first.")
-        return initialize_and_save_pipeline()
+@app.route("/read/gen/word", methods=["GET"])
+def random_word():
+    body = request.get_json()
+    difficulty_level = body.get(
+        'difficulty', 'Easy')  # Default to Easy
+    word_list = words.words()
+    filtered_words = [word for word in word_list if categorize_difficulty(
+        word) == difficulty_level]
 
-    print("Loading the pipeline...")
-    pipe = DiffusionPipeline.from_pretrained(
-        PIPELINE_DIR, torch_dtype=torch.float16)
-    pipe.to("cuda")  # Move to GPU for faster inference
-    print("Pipeline loaded!")
-    return pipe
-
-
-@app.route("/read/gen/image", methods=["GET"])
-def generate_image():
-    try:
-        pipe = load_pipeline()
-        body = request.get_json()
-
-        prompt = body.get("prompt", "A beautiful landscape")
-        save_path = body.get("save_path", "output_image.png")
-
-        print(f"Generating image for prompt: {prompt}")
-        # print(f"Generating image for prompt: {body.prompt}")
-
-        # Generate the image
-        image = pipe(prompt).images[0]
-
-        # Display the image
-        image.show()
-
-        # Save the image
-        image.save(save_path)
-        print(f"Image saved to: {save_path}")
-        # return image
-        return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
-    except Exception as e:
-        return jsonify({"message": "Image generated Faild", "error": e}), 500
+    if filtered_words:
+        return jsonify({"word": random.choice(filtered_words)})
+    else:
+        return jsonify({"error": "No words found for the selected difficulty level"}), 400
 
 
 @app.route("/generate-shapes", methods=["POST"])
@@ -351,5 +317,4 @@ def generate_shapes():
 
 
 if __name__ == "__main__":
-
     app.run(port=5000)

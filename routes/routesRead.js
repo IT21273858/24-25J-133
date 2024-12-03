@@ -233,6 +233,13 @@ try {
 
 
 
+//comprehension
+router.get('/comprehension/getWord', async (req, res)=>{
+        
+
+} )
+
+
 
 
 // upload
