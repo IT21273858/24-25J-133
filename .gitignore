@@ -59,6 +59,8 @@ uploads
 # Optional stylelint cache
 .stylelintcache
 
+stable_diffusion_pipeline
+
 # Microbundle cache
 .rpt2_cache/
 .rts2_cache_cjs/

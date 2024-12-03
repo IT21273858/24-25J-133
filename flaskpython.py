@@ -3,6 +3,10 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import os
+from diffusers import DiffusionPipeline
+import torch
+from PIL import Image
+
 
 # Suppress TensorFlow logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -10,11 +14,18 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # Initialize Flask app
 app = Flask(__name__)
 
+
+# stable-diffustion-pipleine-path
+PIPELINE_DIR = "./stable_diffusion_pipeline"
+
+
 # Load the models
 shape_model = tf.keras.models.load_model("./pickle/shape_recognition_model.h5")
+
 shape_model.compile()  # Compile the model to suppress warnings
 
-pattern_model = tf.keras.models.load_model("./pickle/pattern_recognition_model.h5")
+pattern_model = tf.keras.models.load_model(
+    "./pickle/pattern_recognition_model.h5")
 pattern_model.compile()  # Compile the model to suppress warnings
 
 # Define shape mappings
@@ -25,7 +36,7 @@ reverse_mapping = {v: k for k, v in shape_mapping.items()}
 class_names = ["circle", "square", "triangle"]
 
 
-#  IMAGE PREDICTION 
+#  IMAGE PREDICTION
 
 
 # Preprocess the image for shape recognition
@@ -58,7 +69,8 @@ def predict():
         # Clean up the temporary file
         os.remove(file_path)
 
-        print(f"Predicted Shape is {predicted_class} with confidence {confidence:.2f}")
+        print(f"Predicted Shape is {
+              predicted_class} with confidence {confidence:.2f}")
 
         # Return the prediction
         return jsonify({"class": predicted_class, "confidence": float(confidence)})
@@ -87,7 +99,8 @@ def generate_pattern(difficulty):
             [np.random.randint(0, 3) for _ in range(sequence_length)], reverse=True
         )  # Descending order
     else:
-        raise ValueError("Invalid difficulty level. Use 'easy', 'medium', or 'hard'.")
+        raise ValueError(
+            "Invalid difficulty level. Use 'easy', 'medium', or 'hard'.")
     return sequence
 
 
@@ -138,5 +151,64 @@ def predict_pattern():
         return jsonify({"error": str(e)}), 500
 
 
+#
+##
+# READ _ IMAGE GENERATION*(Stable Diffusion)
+
+# inizalize stable diffustion pipeline
+
+
+def initialize_and_save_pipeline():
+    print("Initializing the pipeline...")
+    model_name = "CompVis/stable-diffusion-v1-4"
+
+    # Load the pipeline
+    pipe = DiffusionPipeline.from_pretrained(
+        model_name, torch_dtype=torch.float16)
+    # pipe.to("cuda")  # Move to GPU for faster inference
+    pipe.to("cpu")  # Move to GPU for faster inference
+
+    # Save the pipeline
+    print("Saving the pipeline...")
+    pipe.save_pretrained(PIPELINE_DIR)
+    print("Pipeline saved!")
+    return pipe
+
+# load stable diffustion
+
+
+def load_pipeline():
+    if not os.path.exists(PIPELINE_DIR):
+        print("Pipeline not found! Initializing and saving pipeline first.")
+        return initialize_and_save_pipeline()
+
+    print("Loading the pipeline...")
+    pipe = DiffusionPipeline.from_pretrained(
+        PIPELINE_DIR, torch_dtype=torch.float16)
+    pipe.to("cuda")  # Move to GPU for faster inference
+    print("Pipeline loaded!")
+    return pipe
+
+
+@app.route("/read/gen/image", methods=["GET"])
+def generate_image(pipe, prompt: str, save_path="generated_image.png"):
+
+    body = request.get_json()
+    print(f"Generating image for prompt: {prompt}")
+    # print(f"Generating image for prompt: {body.prompt}")
+
+    # Generate the image
+    image = pipe(prompt).images[0]
+
+    # Display the image
+    image.show()
+
+    # Save the image
+    image.save(save_path)
+    print(f"Image saved to: {save_path}")
+    return image
+
+
 if __name__ == "__main__":
+    pipeline = load_pipeline()
     app.run(port=5000)
