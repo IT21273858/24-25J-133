@@ -191,24 +191,32 @@ def load_pipeline():
 
 
 @app.route("/read/gen/image", methods=["GET"])
-def generate_image(pipe, prompt: str, save_path="generated_image.png"):
+def generate_image():
+    try:
+        pipe = load_pipeline()
+        body = request.get_json()
 
-    body = request.get_json()
-    print(f"Generating image for prompt: {prompt}")
-    # print(f"Generating image for prompt: {body.prompt}")
+        prompt = body.get("prompt", "A beautiful landscape")
+        save_path = body.get("save_path", "output_image.png")
 
-    # Generate the image
-    image = pipe(prompt).images[0]
+        print(f"Generating image for prompt: {prompt}")
+        # print(f"Generating image for prompt: {body.prompt}")
 
-    # Display the image
-    image.show()
+        # Generate the image
+        image = pipe(prompt).images[0]
 
-    # Save the image
-    image.save(save_path)
-    print(f"Image saved to: {save_path}")
-    return image
+        # Display the image
+        image.show()
+
+        # Save the image
+        image.save(save_path)
+        print(f"Image saved to: {save_path}")
+        # return image
+        return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
+    except Exception as e:
+        return jsonify({"message": "Image generated Faild", "error": e}), 500
 
 
 if __name__ == "__main__":
-    pipeline = load_pipeline()
+
     app.run(port=5000)

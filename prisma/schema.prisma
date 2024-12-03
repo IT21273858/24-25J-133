@@ -96,13 +96,12 @@ model Readers {
 }
 
 model Assessment {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String
-  fluencyScore  Float
-  phonemicScore Float
-  phonicScore   Float
-  comprehension Float
-  timestamp     DateTime @default(now())
-  Readers       Readers? @relation(fields: [readersId], references: [id])
-  readersId     String?  @db.ObjectId
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String
+  Score        Float
+  checkmeasure String
+  difficulty   String   @default("LOW")
+  timestamp    DateTime @default(now())
+  Readers      Readers? @relation(fields: [readersId], references: [id])
+  readersId    String?  @db.ObjectId
 }
