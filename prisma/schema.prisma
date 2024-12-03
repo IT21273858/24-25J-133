@@ -97,9 +97,9 @@ model Readers {
 
 model Assessment {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String
   Score        Float
   wordgiven    String?
+  wpm          Float?
   checkmeasure String
   difficulty   String   @default("LOW")
   timestamp    DateTime @default(now())

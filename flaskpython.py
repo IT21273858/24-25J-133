@@ -11,7 +11,6 @@ from PIL import Image
 import random
 import nltk
 import syllapy
-
 import base64
 import random
 
@@ -272,14 +271,14 @@ def categorize_difficulty(word):
 @app.route("/read/gen/word", methods=["GET"])
 def random_word():
     body = request.get_json()
-    difficulty_level = body.get(
+    difficulty_level = request.args.get(
         'difficulty', 'Easy')  # Default to Easy
     word_list = words.words()
     filtered_words = [word for word in word_list if categorize_difficulty(
         word) == difficulty_level]
 
     if filtered_words:
-        return jsonify({"word": random.choice(filtered_words)})
+        return jsonify({"word": random.choice(filtered_words), "difficulty": difficulty_level})
     else:
         return jsonify({"error": "No words found for the selected difficulty level"}), 400
 
