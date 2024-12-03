@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify
 import tensorflow as tf
+from tensorflow.keras.models import load_model
 import numpy as np
 import cv2
 import os
 from diffusers import DiffusionPipeline
 import torch
 from PIL import Image
+
+import base64
+import random
 
 
 # Suppress TensorFlow logs
@@ -27,6 +31,7 @@ shape_model.compile()  # Compile the model to suppress warnings
 pattern_model = tf.keras.models.load_model(
     "./pickle/pattern_recognition_model.h5")
 pattern_model.compile()  # Compile the model to suppress warnings
+
 
 # Define shape mappings
 shape_mapping = {0: "square", 1: "circle", 2: "triangle"}
@@ -115,6 +120,36 @@ def predict_next_shape(sequence):
 
     # Map the predicted shape back to its name
     return shape_mapping[next_shape]
+
+
+# Generate Shapes
+def generate_shape_image(shape, img_size=128):
+    """
+    Args:
+        shape (str): Type of shape ('circle', 'square', 'triangle').
+        img_size (int): Size of the image (width and height).
+    Returns:
+        np.array: Generated image with the shape.
+    """
+    img = np.zeros((img_size, img_size, 3), dtype=np.uint8)  # Black background
+    color = tuple(np.random.randint(0, 256, size=3).tolist())  # Random color
+    center = (np.random.randint(30, img_size - 30),
+              np.random.randint(30, img_size - 30))
+    radius = np.random.randint(20, 50)
+
+    if shape == "circle":
+        cv2.circle(img, center, radius, color, -1)
+    elif shape == "square":
+        top_left = (center[0] - radius, center[1] - radius)
+        bottom_right = (center[0] + radius, center[1] + radius)
+        cv2.rectangle(img, top_left, bottom_right, color, -1)
+    elif shape == "triangle":
+        pt1 = (center[0], center[1] - radius)
+        pt2 = (center[0] - radius, center[1] + radius)
+        pt3 = (center[0] + radius, center[1] + radius)
+        cv2.drawContours(img, [np.array([pt1, pt2, pt3])], 0, color, -1)
+
+    return img
 
 
 @app.route("/predict-pattern", methods=["POST"])
@@ -215,6 +250,104 @@ def generate_image():
         return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
     except Exception as e:
         return jsonify({"message": "Image generated Faild", "error": e}), 500
+
+
+#
+##
+# READ _ IMAGE GENERATION*(Stable Diffusion)
+
+# inizalize stable diffustion pipeline
+
+
+def initialize_and_save_pipeline():
+    print("Initializing the pipeline...")
+    model_name = "CompVis/stable-diffusion-v1-4"
+
+    # Load the pipeline
+    pipe = DiffusionPipeline.from_pretrained(
+        model_name, torch_dtype=torch.float16)
+    pipe.to("cuda")  # Move to GPU for faster inference
+    # pipe.to("cpu")  # Move to GPU for faster inference
+
+    # Save the pipeline
+    print("Saving the pipeline...")
+    pipe.save_pretrained(PIPELINE_DIR)
+    print("Pipeline saved!")
+    return pipe
+
+# load stable diffustion
+
+
+def load_pipeline():
+    if not os.path.exists(PIPELINE_DIR):
+        print("Pipeline not found! Initializing and saving pipeline first.")
+        return initialize_and_save_pipeline()
+
+    print("Loading the pipeline...")
+    pipe = DiffusionPipeline.from_pretrained(
+        PIPELINE_DIR, torch_dtype=torch.float16)
+    pipe.to("cuda")  # Move to GPU for faster inference
+    print("Pipeline loaded!")
+    return pipe
+
+
+@app.route("/read/gen/image", methods=["GET"])
+def generate_image():
+    try:
+        pipe = load_pipeline()
+        body = request.get_json()
+
+        prompt = body.get("prompt", "A beautiful landscape")
+        save_path = body.get("save_path", "output_image.png")
+
+        print(f"Generating image for prompt: {prompt}")
+        # print(f"Generating image for prompt: {body.prompt}")
+
+        # Generate the image
+        image = pipe(prompt).images[0]
+
+        # Display the image
+        image.show()
+
+        # Save the image
+        image.save(save_path)
+        print(f"Image saved to: {save_path}")
+        # return image
+        return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
+    except Exception as e:
+        return jsonify({"message": "Image generated Faild", "error": e}), 500
+
+
+@app.route("/generate-shapes", methods=["POST"])
+def generate_shapes():
+    try:
+        # Get the number of shapes to generate from the request
+        data = request.get_json()
+        num_shapes = data.get("num_shapes", 5)  # Default to 5 shapes
+
+        # Ensure the number of shapes is valid
+        if num_shapes <= 0 or num_shapes > 100:
+            return jsonify({"error": "Number of shapes must be between 1 and 100."}), 400
+
+        response = []
+        for _ in range(num_shapes):
+            # Randomly select a shape
+            shape_name = random.choice(shape_mapping)
+
+            # Generate the shape image
+            shape_img = generate_shape_image(shape_name)
+
+            # Convert the image to Base64
+            _, buffer = cv2.imencode(".png", shape_img)
+            image_base64 = base64.b64encode(buffer).decode("utf-8")
+
+            # Append the result
+            response.append({"shape": shape_name, "image": image_base64})
+
+        return jsonify({"shapes": response, "message": "Shapes generated successfully!"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
