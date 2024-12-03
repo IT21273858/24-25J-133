@@ -284,6 +284,65 @@ try {
 })
 
 
+//Comprehen
+router.get('/comp/savescroe',async (req, res) =>{
+    
+if(!req.body){
+    return res.json({
+        error: "no body added"
+    })
+}
+
+//body
+const wordsDisplayed = req.body.wordsDisplayed
+const timetaken = req.body.TTT; // in minutes
+const score = req.body.score;
+const readersId = req.body.readersId;
+// audioMeme
+try {
+    
+        data ={
+            Score:score,
+            wordgiven : wordsDisplayed,
+            checkmeasure : "Comp",
+            difficulty : "none",
+            readersId : readersId
+        }
+
+        const assesment = await createAssesmenttoReader(data)
+
+
+
+        return res.status(200).json({
+            wordsDisplayed:wordsDisplayed,
+            timetakentograb:timetaken,
+            dbstatus : assesment?"Recorded":"NotRecorded"
+        });
+
+        
+
+    }
+     
+    
+
+    
+catch (error) {
+    console.error('Error transcribing audio: ', error);
+    throw error
+}
+})
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
