@@ -165,8 +165,8 @@ def initialize_and_save_pipeline():
     # Load the pipeline
     pipe = DiffusionPipeline.from_pretrained(
         model_name, torch_dtype=torch.float16)
-    # pipe.to("cuda")  # Move to GPU for faster inference
-    pipe.to("cpu")  # Move to GPU for faster inference
+    pipe.to("cuda")  # Move to GPU for faster inference
+    # pipe.to("cpu")  # Move to GPU for faster inference
 
     # Save the pipeline
     print("Saving the pipeline...")
