@@ -6,6 +6,7 @@ const patternPredictionController = require('../src/controllers/patternPredictio
 const ParentController = require('../src/controllers/parentController')
 const identifyShapeController = require('../src/controllers/identifyShape')
 const predictWordController = require('../src/controllers/predictWord')
+const digitSpanTaskController = require('../src/controllers/digitSpanTask');
 const ChildrenController = require('../src/controllers/childrenController')
 const GameController = require('../src/controllers/gameController')
 const router = express.Router();
@@ -21,6 +22,10 @@ router.post("/identify-shape", identifyShapeController.getIdentifyShape);
 
 // Identify generate a word 
 router.get('/generate-word', predictWordController.getGenerateWord);
+
+// Digit Span Task Route
+router.get("/generate-digit-sequence", digitSpanTaskController.getDigitSpanTask);
+
 
 // Parent Route
 router.get('/parents/getAll', ParentController.getAllParents);

@@ -29,6 +29,10 @@ shape_generation_model.compile()  # Compile the model to suppress warnings
 word_model = tf.keras.models.load_model("./pickle/predict_word_model.h5")
 word_model.compile()
 
+# Load the digit sequence model
+digit_sequence_model = tf.keras.models.load_model("./pickle/digit_sequence_model.h5")
+digit_sequence_model.compile()  # Compile to suppress warnings
+
 
 # Load the pre-trained tokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -48,6 +52,34 @@ word_levels = {
     "Level 3": ['love', 'code', 'kind', 'game', 'home', 'star'],
     "Level 4": ['train', 'apple', 'table', 'chair', 'house', 'robot']
 }
+
+# Define the route to generate and evaluate digit sequences
+@app.route("/digit-sequence", methods=["POST"])
+def digit_sequence():
+    try:
+        # Parse the request
+        data = request.get_json()
+        user_sequence = data.get("user_sequence", [])
+        sequence_length = data.get("sequence_length", 5)
+
+        if not user_sequence:
+            return jsonify({"error": "User sequence is required"}), 400
+
+        # Generate a random digit sequence
+        generated_sequence = [random.randint(0, 9) for _ in range(sequence_length)]
+        print(f"Generated sequence: {generated_sequence}")
+
+        # Evaluate the user's input
+        correct = user_sequence == generated_sequence
+
+        return jsonify({
+            "generated_sequence": generated_sequence,
+            "user_sequence": user_sequence,
+            "correct": correct
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Shape generation
 
@@ -305,6 +337,31 @@ def generate_and_predict():
             "confidence": float(confidence),
             "image_base64": base64_image,
             "hide_after":  display_time  # The shape will be hidden after `display_time` seconds
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    
+# Serve the digit sequence for the player to recall
+@app.route("/generate-digit-sequence", methods=["GET"])
+def generate_digit_sequence():
+    try:
+        # Generate a random sequence length between 2 and 6
+        sequence_length = random.randint(2, 6)
+
+        # Calculate display time based on sequence length (e.g., 2 seconds per digit)
+        display_time = sequence_length * 2
+
+        # Generate a random digit sequence of the calculated length
+        digit_sequence = [random.randint(0, 9) for _ in range(sequence_length)]
+        print(f"Generated digit sequence: {digit_sequence}")
+
+        # Return the sequence and display time for the client to show
+        return jsonify({
+            "digit_sequence": digit_sequence,
+            "sequence_length": sequence_length,
+            "display_time": display_time
         })
 
     except Exception as e:
