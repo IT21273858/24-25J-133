@@ -59,6 +59,11 @@ router.patch('/gamescore/update/:id', GameScoreController.updateGameScore);
 router.delete('/gamescore/delete/:id', GameScoreController.deleteGameScore);
 
 
+
+// Upload hostinger route
+var uploadRoute = require('./uploadRoutes')
+router.use('/uploads', uploadRoute);
+
 module.exports = router;
 
 
