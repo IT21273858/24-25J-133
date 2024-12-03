@@ -1,3 +1,5 @@
+from nltk.tokenize import sent_tokenize
+from nltk.corpus import gutenberg
 from nltk.corpus import words
 from flask import Flask, request, jsonify
 import tensorflow as tf
@@ -12,7 +14,6 @@ import random
 import nltk
 import syllapy
 import base64
-import random
 
 
 # Suppress TensorFlow logs
@@ -25,6 +26,8 @@ app = Flask(__name__)
 # stable-diffustion-pipleine-path
 PIPELINE_DIR = "./stable_diffusion_pipeline"
 nltk.download('words')
+nltk.download('gutenberg')
+nltk.download('punkt_tab')
 
 
 # Load the models
@@ -224,15 +227,18 @@ def load_pipeline():
     print("Loading the pipeline...")
     pipe = DiffusionPipeline.from_pretrained(
         PIPELINE_DIR, torch_dtype=torch.float16)
-    pipe.to("cuda")  # Move to GPU for faster inference
+    pipe.to("cuda")
+    # pipe.to("cpu")  # Move to GPU for faster inference
     print("Pipeline loaded!")
     return pipe
+
+
+pipe = load_pipeline()
 
 
 @app.route("/read/gen/image", methods=["GET"])
 def generate_image():
     try:
-        pipe = load_pipeline()
         body = request.get_json()
 
         prompt = body.get("prompt", "A beautiful landscape")
@@ -245,7 +251,7 @@ def generate_image():
         image = pipe(prompt).images[0]
 
         # Display the image
-        image.show()
+        # image.show()
 
         # Save the image
         image.save(save_path)
@@ -271,7 +277,7 @@ def categorize_difficulty(word):
 @app.route("/read/gen/word", methods=["GET"])
 def random_word():
     body = request.get_json()
-    difficulty_level = request.args.get(
+    difficulty_level = body.get(
         'difficulty', 'Easy')  # Default to Easy
     word_list = words.words()
     filtered_words = [word for word in word_list if categorize_difficulty(
@@ -313,6 +319,92 @@ def generate_shapes():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def generate_random_passage(num_sentences=5):
+    # Get sentences from the Gutenberg corpus
+    all_sentences = []
+    for file_id in gutenberg.fileids():
+        all_sentences.extend(sent_tokenize(gutenberg.raw(file_id)))
+
+    # Pick random sentences to form a passage
+    passage = " ".join(random.choices(all_sentences, k=num_sentences))
+    return passage
+
+
+def calculate_wpm(passage):
+    # Count words in the passage
+    word_count = len(passage.split())
+
+    # Assign WPM based on word count (simplistic for demonstration)
+    if word_count <= 50:
+        avg_wpm = random.randint(100, 150)  # Easy
+    elif word_count <= 100:
+        avg_wpm = random.randint(150, 250)  # Medium
+    else:
+        avg_wpm = random.randint(250, 300)  # Hard
+
+    return avg_wpm
+
+
+@app.route('/read/gen/passage', methods=['GET'])
+def generate_passage():
+    data = request.get_json()
+    num_sentences = data.get('num_sentences')
+    print(num_sentences)
+    passage = generate_random_passage(num_sentences)
+    avg_wpm = calculate_wpm(passage)
+
+    # Return JSON response
+    return jsonify({
+        "passage": passage,
+        "average_wpm": avg_wpm
+    }), 200
+
+
+def getIncorrectWords():
+    word_list = words.words()
+    filtered_words = [word for word in word_list if categorize_difficulty(
+        word) == 'Easy']
+    return [random.choice(filtered_words), random.choice(filtered_words)]
+
+
+@app.route('/read/gen/compAssment', methods=['GET'])
+def getImagesList():
+    try:
+        body = request.get_json()
+        incorrectwords = getIncorrectWords()
+        filepath = "./uploads/read/assesments/comph/"
+        worddisplayed = body.get("word", " a beautiful sun")
+
+        correctimage = pipe("A beautiful cartoon art of " +
+                            incorrectwords+"for childrens").images[0]
+        correctimageurl = filepath+worddisplayed+".png"
+        correctimage.save(correctimageurl)
+        imagelist = [{
+            "imagestatus": "correct",
+            "path": correctimageurl,
+            "word": worddisplayed
+        }]
+
+        for incorword in incorrectwords:
+            incorimg = pipe(incorword).images[0]
+            imageurl = filepath+incorword+".png"
+            incorimg.save(imageurl)
+            imagelist.append({
+                "imagestatus": "incorrect",
+                "path": imageurl,
+                "word": incorword
+            })
+
+        return jsonify({
+            "Images": imagelist,
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "Images": "error occured",
+            "error": e
+        }), 404
 
 
 if __name__ == "__main__":
