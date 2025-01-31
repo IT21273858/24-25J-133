@@ -50,6 +50,9 @@ Develop an innovative mobile application that:
 - **Database**: MongoDB (for progress tracking and personalized learning models)
 - **Machine Learning**: TensorFlow or PyTorch (for adaptive learning models)
 - **NLP**: spaCy or Google’s Natural Language API (for real-time feedback)
+  
+## Architecture Diagram
+![sysdia](https://github.com/user-attachments/assets/7fd58d7f-4773-43e1-b783-01cb1bd35ac0)
 
 ## References
 A comprehensive list of research articles and sources used in this study is available in the **References** section of the project document.
