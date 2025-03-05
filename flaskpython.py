@@ -378,7 +378,7 @@ def getImagesList():
         worddisplayed = body.get("word", " a beautiful sun")
 
         correctimage = pipe("A beautiful cartoon art of " +
-                            incorrectwords+"for childrens").images[0]
+                            worddisplayed+"for childrens").images[0]
         correctimageurl = filepath+worddisplayed+".png"
         correctimage.save(correctimageurl)
         imagelist = [{
