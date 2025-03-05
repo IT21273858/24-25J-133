@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "startall": "concurrently \"npm run start\" \"python3 flaskpython.py\""
+    "startall": "concurrently \"npm run start\" \"python flaskpython.py\""
   },
   "keywords": [],
   "author": "",

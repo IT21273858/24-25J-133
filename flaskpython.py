@@ -18,8 +18,7 @@ import base64
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
 from transformers import BertTokenizer
-
-
+import time
 # Suppress TensorFlow logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -438,219 +437,6 @@ def generate_shapes():
         return jsonify({"error": str(e)}), 500
 
 
-def generate_random_passage(num_sentences=5):
-    # Get sentences from the Gutenberg corpus
-    all_sentences = []
-    for file_id in gutenberg.fileids():
-        all_sentences.extend(sent_tokenize(gutenberg.raw(file_id)))
-
-    # Pick random sentences to form a passage
-    passage = " ".join(random.choices(all_sentences, k=num_sentences))
-    return passage
-
-
-def calculate_wpm(passage):
-    # Count words in the passage
-    word_count = len(passage.split())
-
-    # Assign WPM based on word count (simplistic for demonstration)
-    if word_count <= 50:
-        avg_wpm = random.randint(100, 150)  # Easy
-    elif word_count <= 100:
-        avg_wpm = random.randint(150, 250)  # Medium
-    else:
-        avg_wpm = random.randint(250, 300)  # Hard
-
-    return avg_wpm
-
-
-@app.route('/read/gen/passage', methods=['GET'])
-def generate_passage():
-    data = request.get_json()
-    num_sentences = data.get('num_sentences')
-    print(num_sentences)
-    passage = generate_random_passage(num_sentences)
-    avg_wpm = calculate_wpm(passage)
-
-    # Return JSON response
-    return jsonify({
-        "passage": passage,
-        "average_wpm": avg_wpm
-    }), 200
-
-
-def getIncorrectWords():
-    word_list = words.words()
-    filtered_words = [word for word in word_list if categorize_difficulty(
-        word) == 'Easy']
-    return [random.choice(filtered_words), random.choice(filtered_words)]
-
-
-@app.route('/read/gen/compAssment', methods=['GET'])
-def getImagesList():
-    try:
-        body = request.get_json()
-        incorrectwords = getIncorrectWords()
-        filepath = "./uploads/read/assesments/comph/"
-        worddisplayed = body.get("word", " a beautiful sun")
-
-        correctimage = pipe("A beautiful cartoon art of " +
-                            worddisplayed+"for childrens").images[0]
-        correctimageurl = filepath+worddisplayed+".png"
-        correctimage.save(correctimageurl)
-        imagelist = [{
-            "imagestatus": "correct",
-            "path": correctimageurl,
-            "word": worddisplayed
-        }]
-
-        for incorword in incorrectwords:
-            incorimg = pipe(incorword).images[0]
-            imageurl = filepath+incorword+".png"
-            incorimg.save(imageurl)
-            imagelist.append({
-                "imagestatus": "incorrect",
-                "path": imageurl,
-                "word": incorword
-            })
-
-        return jsonify({
-            "Images": imagelist,
-        }), 200
-    except Exception as e:
-        return jsonify({
-            "Images": "error occured",
-            "error": e
-        }), 404
-
-
-#
-##
-# READ _ IMAGE GENERATION*(Stable Diffusion)
-
-# inizalize stable diffustion pipeline
-
-
-def initialize_and_save_pipeline():
-    print("Initializing the pipeline...")
-    model_name = "CompVis/stable-diffusion-v1-4"
-
-    # Load the pipeline
-    pipe = DiffusionPipeline.from_pretrained(
-        model_name, torch_dtype=torch.float16)
-    pipe.to("cuda")  # Move to GPU for faster inference
-    # pipe.to("cpu")  # Move to GPU for faster inference
-
-    # Save the pipeline
-    print("Saving the pipeline...")
-    pipe.save_pretrained(PIPELINE_DIR)
-    print("Pipeline saved!")
-    return pipe
-
-# load stable diffustion
-
-
-def load_pipeline():
-    if not os.path.exists(PIPELINE_DIR):
-        print("Pipeline not found! Initializing and saving pipeline first.")
-        return initialize_and_save_pipeline()
-
-    print("Loading the pipeline...")
-    pipe = DiffusionPipeline.from_pretrained(
-        PIPELINE_DIR, torch_dtype=torch.float16)
-    pipe.to("cuda")
-    # pipe.to("cpu")  # Move to GPU for faster inference
-    print("Pipeline loaded!")
-    return pipe
-
-
-pipe = load_pipeline()
-
-
-@app.route("/read/gen/image", methods=["GET"])
-def generate_image():
-    try:
-        body = request.get_json()
-
-        prompt = body.get("prompt", "A beautiful landscape")
-        save_path = body.get("save_path", "output_image.png")
-
-        print(f"Generating image for prompt: {prompt}")
-        # print(f"Generating image for prompt: {body.prompt}")
-
-        # Generate the image
-        image = pipe(prompt).images[0]
-
-        # Display the image
-        # image.show()
-
-        # Save the image
-        image.save(save_path)
-        print(f"Image saved to: {save_path}")
-        # return image
-        return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
-    except Exception as e:
-        return jsonify({"message": "Image generated Faild", "error": e}), 500
-
-
-def categorize_difficulty(word):
-    syllables_count = syllapy.count(word)
-
-    # Classify difficulty based on length and syllables
-    if len(word) <= 4 and syllables_count <= 2:
-        return 'Easy'
-    elif len(word) <= 7 and syllables_count <= 3:
-        return 'Medium'
-    else:
-        return 'Hard'
-
-
-@app.route("/read/gen/word", methods=["GET"])
-def random_word():
-    body = request.get_json()
-    difficulty_level = body.get(
-        'difficulty', 'Easy')  # Default to Easy
-    word_list = words.words()
-    filtered_words = [word for word in word_list if categorize_difficulty(
-        word) == difficulty_level]
-
-    if filtered_words:
-        return jsonify({"word": random.choice(filtered_words), "difficulty": difficulty_level})
-    else:
-        return jsonify({"error": "No words found for the selected difficulty level"}), 400
-
-
-@app.route("/generate-shapes", methods=["POST"])
-def generate_shapes():
-    try:
-        # Get the number of shapes to generate from the request
-        data = request.get_json()
-        num_shapes = data.get("num_shapes", 5)  # Default to 5 shapes
-
-        # Ensure the number of shapes is valid
-        if num_shapes <= 0 or num_shapes > 100:
-            return jsonify({"error": "Number of shapes must be between 1 and 100."}), 400
-
-        response = []
-        for _ in range(num_shapes):
-            # Randomly select a shape
-            shape_name = random.choice(shape_mapping)
-
-            # Generate the shape image
-            shape_img = generate_shape_image(shape_name)
-
-            # Convert the image to Base64
-            _, buffer = cv2.imencode(".png", shape_img)
-            image_base64 = base64.b64encode(buffer).decode("utf-8")
-
-            # Append the result
-            response.append({"shape": shape_name, "image": image_base64})
-
-        return jsonify({"shapes": response, "message": "Shapes generated successfully!"})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 def generate_random_passage(num_sentences=5):
     # Get sentences from the Gutenberg corpus
@@ -708,7 +494,7 @@ def getImagesList():
         filepath = "./uploads/read/assesments/comph/"
         worddisplayed = body.get("word", " a beautiful sun")
 
-        correctimage = pipe("A beautiful cartoon art of " +
+        correctimage = pipe("A beautiful ILLUSTRATIONS of " +
                             worddisplayed+"for childrens").images[0]
         correctimageurl = filepath+worddisplayed+".png"
         correctimage.save(correctimageurl)
@@ -737,8 +523,7 @@ def getImagesList():
             "error": e
         }), 404
 
-import base64
-import time
+
 
 @app.route("/generate-word", methods=["GET"])
 def generate_word():
