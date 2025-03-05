@@ -1,11 +1,19 @@
+from nltk.tokenize import sent_tokenize
+from nltk.corpus import gutenberg
+from nltk.corpus import words
 from flask import Flask, request, jsonify
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 import numpy as np
 import cv2
 import os
-import base64
+from diffusers import DiffusionPipeline
+import torch
+from PIL import Image
 import random
+import nltk
+import syllapy
+import base64
 
 
 # Suppress TensorFlow logs
@@ -14,11 +22,21 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # Initialize Flask app
 app = Flask(__name__)
 
+
+# stable-diffustion-pipleine-path
+PIPELINE_DIR = "./stable_diffusion_pipeline"
+nltk.download('words')
+nltk.download('gutenberg')
+nltk.download('punkt_tab')
+
+
 # Load the models
 shape_model = tf.keras.models.load_model("./pickle/shape_recognition_model.h5")
+
 shape_model.compile()  # Compile the model to suppress warnings
 
-pattern_model = tf.keras.models.load_model("./pickle/pattern_recognition_model.h5")
+pattern_model = tf.keras.models.load_model(
+    "./pickle/pattern_recognition_model.h5")
 pattern_model.compile()  # Compile the model to suppress warnings
 
 
@@ -31,6 +49,7 @@ class_names = ["circle", "square", "triangle"]
 
 
 #  IMAGE PREDICTION
+
 
 # Preprocess the image for shape recognition
 def preprocess_image(image_path):
@@ -62,7 +81,8 @@ def predict():
         # Clean up the temporary file
         os.remove(file_path)
 
-        print(f"Predicted Shape is {predicted_class} with confidence {confidence:.2f}")
+        print(f"Predicted Shape is {
+              predicted_class} with confidence {confidence:.2f}")
 
         # Return the prediction
         return jsonify({"class": predicted_class, "confidence": float(confidence)})
@@ -91,7 +111,8 @@ def generate_pattern(difficulty):
             [np.random.randint(0, 3) for _ in range(sequence_length)], reverse=True
         )  # Descending order
     else:
-        raise ValueError("Invalid difficulty level. Use 'easy', 'medium', or 'hard'.")
+        raise ValueError(
+            "Invalid difficulty level. Use 'easy', 'medium', or 'hard'.")
     return sequence
 
 
@@ -119,7 +140,8 @@ def generate_shape_image(shape, img_size=128):
     """
     img = np.zeros((img_size, img_size, 3), dtype=np.uint8)  # Black background
     color = tuple(np.random.randint(0, 256, size=3).tolist())  # Random color
-    center = (np.random.randint(30, img_size - 30), np.random.randint(30, img_size - 30))
+    center = (np.random.randint(30, img_size - 30),
+              np.random.randint(30, img_size - 30))
     radius = np.random.randint(20, 50)
 
     if shape == "circle":
@@ -135,6 +157,7 @@ def generate_shape_image(shape, img_size=128):
         cv2.drawContours(img, [np.array([pt1, pt2, pt3])], 0, color, -1)
 
     return img
+
 
 @app.route("/predict-pattern", methods=["POST"])
 def predict_pattern():
@@ -170,6 +193,102 @@ def predict_pattern():
         return jsonify({"error": str(e)}), 500
 
 
+#
+##
+# READ _ IMAGE GENERATION*(Stable Diffusion)
+
+# inizalize stable diffustion pipeline
+
+
+def initialize_and_save_pipeline():
+    print("Initializing the pipeline...")
+    model_name = "CompVis/stable-diffusion-v1-4"
+
+    # Load the pipeline
+    pipe = DiffusionPipeline.from_pretrained(
+        model_name, torch_dtype=torch.float16)
+    pipe.to("cuda")  # Move to GPU for faster inference
+    # pipe.to("cpu")  # Move to GPU for faster inference
+
+    # Save the pipeline
+    print("Saving the pipeline...")
+    pipe.save_pretrained(PIPELINE_DIR)
+    print("Pipeline saved!")
+    return pipe
+
+# load stable diffustion
+
+
+def load_pipeline():
+    if not os.path.exists(PIPELINE_DIR):
+        print("Pipeline not found! Initializing and saving pipeline first.")
+        return initialize_and_save_pipeline()
+
+    print("Loading the pipeline...")
+    pipe = DiffusionPipeline.from_pretrained(
+        PIPELINE_DIR, torch_dtype=torch.float16)
+    pipe.to("cuda")
+    # pipe.to("cpu")  # Move to GPU for faster inference
+    print("Pipeline loaded!")
+    return pipe
+
+
+pipe = load_pipeline()
+
+
+@app.route("/read/gen/image", methods=["GET"])
+def generate_image():
+    try:
+        body = request.get_json()
+
+        prompt = body.get("prompt", "A beautiful landscape")
+        save_path = body.get("save_path", "output_image.png")
+
+        print(f"Generating image for prompt: {prompt}")
+        # print(f"Generating image for prompt: {body.prompt}")
+
+        # Generate the image
+        image = pipe(prompt).images[0]
+
+        # Display the image
+        # image.show()
+
+        # Save the image
+        image.save(save_path)
+        print(f"Image saved to: {save_path}")
+        # return image
+        return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
+    except Exception as e:
+        return jsonify({"message": "Image generated Faild", "error": e}), 500
+
+
+def categorize_difficulty(word):
+    syllables_count = syllapy.count(word)
+
+    # Classify difficulty based on length and syllables
+    if len(word) <= 4 and syllables_count <= 2:
+        return 'Easy'
+    elif len(word) <= 7 and syllables_count <= 3:
+        return 'Medium'
+    else:
+        return 'Hard'
+
+
+@app.route("/read/gen/word", methods=["GET"])
+def random_word():
+    body = request.get_json()
+    difficulty_level = body.get(
+        'difficulty', 'Easy')  # Default to Easy
+    word_list = words.words()
+    filtered_words = [word for word in word_list if categorize_difficulty(
+        word) == difficulty_level]
+
+    if filtered_words:
+        return jsonify({"word": random.choice(filtered_words), "difficulty": difficulty_level})
+    else:
+        return jsonify({"error": "No words found for the selected difficulty level"}), 400
+
+
 @app.route("/generate-shapes", methods=["POST"])
 def generate_shapes():
     try:
@@ -200,6 +319,93 @@ def generate_shapes():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def generate_random_passage(num_sentences=5):
+    # Get sentences from the Gutenberg corpus
+    all_sentences = []
+    for file_id in gutenberg.fileids():
+        all_sentences.extend(sent_tokenize(gutenberg.raw(file_id)))
+
+    # Pick random sentences to form a passage
+    passage = " ".join(random.choices(all_sentences, k=num_sentences))
+    return passage
+
+
+def calculate_wpm(passage):
+    # Count words in the passage
+    word_count = len(passage.split())
+
+    # Assign WPM based on word count (simplistic for demonstration)
+    if word_count <= 50:
+        avg_wpm = random.randint(100, 150)  # Easy
+    elif word_count <= 100:
+        avg_wpm = random.randint(150, 250)  # Medium
+    else:
+        avg_wpm = random.randint(250, 300)  # Hard
+
+    return avg_wpm
+
+
+@app.route('/read/gen/passage', methods=['GET'])
+def generate_passage():
+    data = request.get_json()
+    num_sentences = data.get('num_sentences')
+    print(num_sentences)
+    passage = generate_random_passage(num_sentences)
+    avg_wpm = calculate_wpm(passage)
+
+    # Return JSON response
+    return jsonify({
+        "passage": passage,
+        "average_wpm": avg_wpm
+    }), 200
+
+
+def getIncorrectWords():
+    word_list = words.words()
+    filtered_words = [word for word in word_list if categorize_difficulty(
+        word) == 'Easy']
+    return [random.choice(filtered_words), random.choice(filtered_words)]
+
+
+@app.route('/read/gen/compAssment', methods=['GET'])
+def getImagesList():
+    try:
+        body = request.get_json()
+        incorrectwords = getIncorrectWords()
+        filepath = "./uploads/read/assesments/comph/"
+        worddisplayed = body.get("word", " a beautiful sun")
+
+        correctimage = pipe("A beautiful cartoon art of " +
+                            incorrectwords+"for childrens").images[0]
+        correctimageurl = filepath+worddisplayed+".png"
+        correctimage.save(correctimageurl)
+        imagelist = [{
+            "imagestatus": "correct",
+            "path": correctimageurl,
+            "word": worddisplayed
+        }]
+
+        for incorword in incorrectwords:
+            incorimg = pipe(incorword).images[0]
+            imageurl = filepath+incorword+".png"
+            incorimg.save(imageurl)
+            imagelist.append({
+                "imagestatus": "incorrect",
+                "path": imageurl,
+                "word": incorword
+            })
+
+        return jsonify({
+            "Images": imagelist,
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "Images": "error occured",
+            "error": e
+        }), 404
+
 
 if __name__ == "__main__":
     app.run(port=5000)

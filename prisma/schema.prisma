@@ -29,6 +29,7 @@ model Parent {
 model Children {
   id          String       @id @default(auto()) @map("_id") @db.ObjectId
   name        String?
+  age         Int?         @default(0)
   email       String       @unique
   password    String
   profile_img String?
@@ -41,6 +42,7 @@ model Children {
   updatedAt   DateTime     @updatedAt
   ChildLevel  ChildLevel[]
   GameScore   GameScore[]
+  Readers     Readers?
 }
 
 model ChildLevel {
@@ -78,4 +80,29 @@ model GameScore {
   children    Children @relation(fields: [children_id], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Readers {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  children_id   String       @unique @db.ObjectId
+  children      Children     @relation(fields: [children_id], references: [id])
+  fluencyLevel  Float
+  phonemicLevel Float
+  phonicLevel   Float
+  comprehension Float
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt()
+  assessments   Assessment[]
+}
+
+model Assessment {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  Score        Float
+  wordgiven    String?
+  wpm          Float?
+  checkmeasure String
+  difficulty   String   @default("LOW")
+  timestamp    DateTime @default(now())
+  Readers      Readers? @relation(fields: [readersId], references: [id])
+  readersId    String?  @db.ObjectId
 }
