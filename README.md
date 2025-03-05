@@ -81,6 +81,7 @@ A comprehensive list of research articles and sources used in this study is avai
    ```bash
       pip install -r requirements.txt
    ```
+
     To run Python file only
     ```bash
     python flaskpython.py
