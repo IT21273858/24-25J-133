@@ -10,7 +10,9 @@ const getAllChildrens = async () => {
         include: {
             parent: true, // Include children in the response
             ChildLevel: true,  // Include childLevel in the response
-            GameScore: true // Include gameScore in the response
+            GameScore: {
+                include:{game:true}
+            } // Include gameScore in the response
         }
     });
     return childrens;
@@ -23,7 +25,10 @@ const getChildById = async (id) => {
         include: {
             parent: true, // Include children in the response
             ChildLevel: true,  // Include childLevel in the response
-            GameScore: true // Include gameScore in the response
+            GameScore: {
+                include:{game:true}
+
+            } // Include gameScore in the response
         }
     });
 };

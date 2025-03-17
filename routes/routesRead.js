@@ -3,10 +3,15 @@ const fs = require('fs');
 const multer = require('multer');
 const router = express.Router();
 const audioClient = require('../src/controllers/read/speech-to-text')
+const {genSpeech} = require('../src/controllers/read/text-to-speech')
 const upload = multer({ dest: 'uploads/read/assesments/spellword' });
 const {getEncoder} = require('../src/utils/getAudioEncodingtype');
 const { getScoreByDifficulty } = require('../src/utils/getScorebyDifficulty');
 const {createAssesmenttoReader} = require('../src/services/read/assesment')
+
+
+
+//Checkpoints
 
 // phonemes(Spellword)
 router.get('/phonemes/get',async (req, res)=>{
@@ -331,6 +336,30 @@ catch (error) {
     throw error
 }
 })
+
+
+
+
+//Games
+
+
+//spellword
+router.post('/phonemes/genvoice',async (req, res)=>{
+    
+    if(!req.body.word){
+        return res.status(404).json({
+            error:"No txt found"
+        })
+    }
+
+    // const phonemes = ["b", "ch", "sh", "th", "a", "e", "i", "o", "u"];
+    const audiopath = await genSpeech(req.body.word);
+
+    
+    // const transcriptgenerated = await transcribeAudio(randomPhoneme);
+    return res.status(200).json({ word: req.body.word,audio: audiopath});
+
+});
 
 
 
