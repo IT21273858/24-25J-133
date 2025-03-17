@@ -38,6 +38,7 @@ const getGameScoreById = async (req, res) => {
 };
 // Controller to get a gameScore For a Children
 const getGameScoreByChildrenId = async (req, res) => {
+    console.log("Get gamescore by id",req.params)
     const { id } = req.params; // Extract ID from request parameters
     try {
         // Retrieve gamescore data by ID

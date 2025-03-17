@@ -239,6 +239,7 @@ const verifyGameAndUpdateLevel = async (childId, gameId, gameStatus, completionT
                 score: score,
                 game_id: game.id,
                 children_id: childId,
+                played_time: completionTime,
             },
         });
 

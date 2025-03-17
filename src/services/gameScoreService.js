@@ -45,6 +45,7 @@ const createGameScore = async (gamescoreDetails) => {
         const data = {
             name: gamescoreDetails.name,
             score: gamescoreDetails.score,
+            played_time: gamescoreDetails.played_time,
             game_id: gamescoreDetails.game_id,
             children_id: gamescoreDetails.children_id,
         };
