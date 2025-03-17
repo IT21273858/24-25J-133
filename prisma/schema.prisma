@@ -74,6 +74,7 @@ model GameScore {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   score       Float    @default(0)
+  played_time String   @default("15") // Estimated play time
   game_id     String   @db.ObjectId
   game        Game     @relation(fields: [game_id], references: [id])
   children_id String   @db.ObjectId
