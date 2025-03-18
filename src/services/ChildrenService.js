@@ -233,7 +233,7 @@ function generateToken(child) {
     const secretKey = process.env.JWT_SECRET; // Use environment variable for the secret key
     const expiresIn = "1h"; // Token expiry time
     return jwt.sign(
-        { user: child.id, name: child.name, img: child.profile_img },
+        { user: child.id, name: child.name, img: child.profile_img, level:child.level },
         secretKey,
         { expiresIn }
     );

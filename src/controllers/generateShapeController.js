@@ -1,6 +1,7 @@
 const generateShapeService = require('../services/generateShapeService.js');
 
 const getGenerateShape = async (req, res) => {
+    console.log(res.body);
     try {
         // Check if difficulty is provided in the request body
         const { difficulty } = req.body;
