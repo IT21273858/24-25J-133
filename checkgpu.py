@@ -1,5 +1,5 @@
 import torch
-if torch.cuda.is_available(): 
-    print("GPU is available") 
-else: 
-    print("GPU is not available")
+device = "cuda"  if(torch.cuda.is_available()) else "cpu"
+
+print(" deivce is ")
+print(device)

@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const multer = require('multer');
 const router = express.Router();
-const audioClient = require('../src/controllers/read/speech-to-text')
+const {createClient} = require('../src/controllers/read/speech-to-text')
 const {genSpeech} = require('../src/controllers/read/text-to-speech')
 const upload = multer({ dest: 'uploads/read/assesments/spellword' });
 const {getEncoder} = require('../src/utils/getAudioEncodingtype');
@@ -23,12 +23,15 @@ router.get('/phonemes/get',async (req, res)=>{
     
 });
 
-router.get('/phonemes/verify',async (req, res) =>{
+router.post('/phonemes/verify',async (req, res) =>{
     if(!req.body){
         return res.json({
             error: "no body added"
         })
     }
+
+    console.log("started recognize")
+
 
     const audiopath = req.body.audiopath;
     if(!audiopath){
@@ -68,16 +71,21 @@ router.get('/phonemes/verify',async (req, res) =>{
 
 
     try {
-        
+
+        const audioClient = createClient()
+
         audioClient.recognize(request)
         .then(async ([response]) => {
           const transcription = response.results
             .map(result => result.alternatives[0].transcript)
             .join('\n');
+        
+            
           if(transcription){
-            const transcriptgenerated = transcription;
+            const transcriptgenerated = transcription.trim().toLowerCase();
             const letterdisplay = letterdisplayed.trim().toLowerCase();
-            console.log(letterdisplay)
+            console.log("display " +letterdisplay)
+            console.log("Recognized " +transcriptgenerated)
             if (letterdisplay == transcriptgenerated) {
 
                 //verified
@@ -125,18 +133,23 @@ router.get('/phonemes/verify',async (req, res) =>{
 
           }
         })
-        .catch(err => {
+        .catch(async (err) => {
           console.error('Error during transcription: ', err);
+          
           return res.status(404).json({
             msg : "Error during transcription",
             status :false,
             error:err
     });
 
-        });
+        }).finally(async ()=>{
+            await audioClient.close();
+        })
     } catch (error) {
         console.error('Error transcribing audio: ', error);
         throw error
+    }finally{
+       
     }
 
 
@@ -163,7 +176,7 @@ router.get('/fluency/getpassage',async (req, res)=>{
 
 });
 
-router.get('/fluency/calcWPM',async (req, res) =>{
+router.post('/fluency/calcWPM',async (req, res) =>{
     var fluencylevel = "none"
 if(!req.body){
     return res.json({
@@ -214,13 +227,15 @@ const request = {
 
 try {
     
+    const audioClient = createClient()
+
     audioClient.recognize(request)
     .then(async ([response]) => {
       const transcription = response.results
         .map(result => result.alternatives[0].transcript)
         .join('\n');
       if(transcription){
-        const wordsRead = transcription.split("").length;
+        const wordsRead = transcription.split(" ").length;
         const WPM = wordsRead/timetaken;
         // console.log(AverageWPM)
         const Fluencylevel = WPM/AverageWPM
@@ -245,7 +260,7 @@ try {
 
         const assesment = await createAssesmenttoReader(data)
 
-
+        
 
         return res.status(200).json({
             wordsread:wordsRead,
@@ -261,15 +276,18 @@ try {
       }
      
     })
-    .catch(err => {
+    .catch(async (err) => {
       console.error('Error during transcription: ', err);
+      
       return res.status(404).json({
         msg : "Error during transcription",
         status :false,
         err:err
 });
 
-    });
+    }).finally(async()=>{
+        await audioClient.close()
+    })
 } catch (error) {
     console.error('Error transcribing audio: ', error);
     throw error
