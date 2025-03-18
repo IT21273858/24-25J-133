@@ -4,11 +4,11 @@ const util = require('util');
 
 
 const client = new textToSpeech.TextToSpeechClient({
-    projectId:"",
-    credentials:{
-        client_email:"",
-        private_key_id:"",
-        private_key:""
+  projectId:"",
+  credentials:{
+      client_email:"",
+      private_key_id:"",
+      private_key:""
     }
 })
 

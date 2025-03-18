@@ -1,3 +1,4 @@
+from io import BytesIO
 from nltk.tokenize import sent_tokenize
 from nltk.corpus import gutenberg
 from nltk.corpus import words
@@ -340,10 +341,14 @@ def load_pipeline():
         print("Pipeline not found! Initializing and saving pipeline first.")
         return initialize_and_save_pipeline()
 
+
+    device = "cuda"  if(torch.cuda.is_available()) else "cpu"
+   
+        
     print("Loading the pipeline...")
     pipe = DiffusionPipeline.from_pretrained(
         PIPELINE_DIR, torch_dtype=torch.float16)
-    pipe.to("cuda")
+    pipe.to(device)
     # pipe.to("cpu")  # Move to GPU for faster inference
     print("Pipeline loaded!")
     return pipe
@@ -390,11 +395,12 @@ def categorize_difficulty(word):
         return 'Hard'
 
 
-@app.route("/read/gen/word", methods=["GET"])
+@app.route("/read/gen/word", methods=["POST"])
 def random_word():
-    body = request.get_json()
+    body = request.get_json();
     difficulty_level = body.get(
-        'difficulty', 'Easy')  # Default to Easy
+        'difficulty', 'Easy')
+     # Default to Easy
     word_list = words.words()
     filtered_words = [word for word in word_list if categorize_difficulty(
         word) == difficulty_level]
@@ -464,7 +470,7 @@ def calculate_wpm(passage):
     return avg_wpm
 
 
-@app.route('/read/gen/passage', methods=['GET'])
+@app.route('/read/gen/passage', methods=['POST'])
 def generate_passage():
     data = request.get_json()
     num_sentences = data.get('num_sentences')
@@ -483,35 +489,52 @@ def getIncorrectWords():
     word_list = words.words()
     filtered_words = [word for word in word_list if categorize_difficulty(
         word) == 'Easy']
-    return [random.choice(filtered_words), random.choice(filtered_words)]
+    return [random.choice(filtered_words), random.choice(filtered_words), random.choice(filtered_words)]
 
 
-@app.route('/read/gen/compAssment', methods=['GET'])
+@app.route('/read/gen/compAssment', methods=['POST'])
 def getImagesList():
     try:
         body = request.get_json()
-        incorrectwords = getIncorrectWords()
+        incorrectwords = getIncorrectWords()[:3]
         filepath = "./uploads/read/assesments/comph/"
         worddisplayed = body.get("word", " a beautiful sun")
 
-        correctimage = pipe("A beautiful ILLUSTRATIONS of " +
-                            worddisplayed+"for childrens").images[0]
+        correctimage = pipe("Generate a child friendly image of " +
+                            worddisplayed).images[0]
+        
+        def image_to_base64(image):
+            buffered = BytesIO()
+            image.save(buffered, format="PNG")
+            return base64.b64encode(buffered.getvalue()).decode("utf-8")
+        
+        def resize_image(image, max_size=(200, 200)):  # Resize to 200x200
+            image.thumbnail(max_size)
+            return image
+        
+        print("worddisplayed");
+        print(worddisplayed);
         correctimageurl = filepath+worddisplayed+".png"
         correctimage.save(correctimageurl)
+        correctimage_base64 = image_to_base64(resize_image(correctimage))
+
         imagelist = [{
             "imagestatus": "correct",
             "path": correctimageurl,
-            "word": worddisplayed
+            "word": worddisplayed,
+            "dataimg":correctimage_base64
         }]
 
         for incorword in incorrectwords:
-            incorimg = pipe(incorword).images[0]
+            incorimg = pipe("Generate a cartoon shade " +incorword).images[0]
             imageurl = filepath+incorword+".png"
             incorimg.save(imageurl)
+            incoB64 = image_to_base64(resize_image(incorimg))
             imagelist.append({
                 "imagestatus": "incorrect",
                 "path": imageurl,
-                "word": incorword
+                "word": incorword,
+                "dataimg":incoB64
             })
 
         return jsonify({

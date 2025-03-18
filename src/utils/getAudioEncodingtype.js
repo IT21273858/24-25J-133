@@ -9,7 +9,7 @@ function getEncoder(filememe){
         'audio/flac': { encoding: 'FLAC', sampleRateHertz: 44100 },
       };
 
-      return encodingMap[filememe] || null
+      return encodingMap[filememe] || 'audio/wav'
     
 }
 

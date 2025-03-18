@@ -2,18 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const { SpeechClient } = require('@google-cloud/speech');
 
-const client = new SpeechClient({
-    projectId:"",
-    credentials:{
-        client_email:"",
-        private_key_id:"",
-        private_key:""
-    }
-});
+
+const createClient = () => {
+    return new SpeechClient({
+        projectId:"",
+        credentials:{
+            client_email:"",
+            private_key_id:"",
+            private_key:""
+        }
+    });
+  };
 
 
 
-module.exports = client;
+
+
+module.exports = {createClient};
 
 
 
