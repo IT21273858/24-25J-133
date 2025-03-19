@@ -61,6 +61,8 @@ uploads
 
 stable_diffusion_pipeline
 
+trOCR
+
 # Microbundle cache
 .rpt2_cache/
 .rts2_cache_cjs/
