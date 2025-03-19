@@ -35,6 +35,7 @@ model Children {
   profile_img String?
   address     String?
   phoneNumber String?
+  type        String?      @default("Reading")
   level       String       @default("easy")
   parent_id   String       @db.ObjectId
   parent      Parent       @relation(fields: [parent_id], references: [id])
