@@ -15,10 +15,10 @@ import random
 import nltk
 import syllapy
 import base64
-
+import requests
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
-from transformers import BertTokenizer
+from transformers import BertTokenizer,TrOCRProcessor, VisionEncoderDecoderModel
 import time
 # Suppress TensorFlow logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -29,10 +29,14 @@ app = Flask(__name__)
 
 # stable-diffustion-pipleine-path
 PIPELINE_DIR = "./stable_diffusion_pipeline"
+OCR_DIR = "./trOCR"
 nltk.download('words')
 nltk.download('gutenberg')
 nltk.download('punkt_tab')
 
+
+# device = "cuda"  if(torch.cuda.is_available()) else "cpu"
+device = "cpu"
 
 # Load the models
 shape_model = tf.keras.models.load_model("./pickle/shape_recognition_model.h5")
@@ -333,6 +337,25 @@ def initialize_and_save_pipeline():
     print("Pipeline saved!")
     return pipe
 
+
+def initialize_and_save_pipeline_ocr():
+    print("Initializing the OCR pipeline...")
+    model_name = "microsoft/trocr-base-handwritten"
+
+    # Load the pipeline
+    processor = TrOCRProcessor.from_pretrained(model_name)
+    model = VisionEncoderDecoderModel.from_pretrained(model_name)
+    model.to(device)  # Move to GPU for faster inference
+    # pipe.to("cpu")  # Move to GPU for faster inference
+
+    # Save the pipeline
+    print("Saving the  OCR pipeline...")
+    model.save_pretrained(OCR_DIR)
+    processor.save_pretrained(OCR_DIR)
+    print("Pipeline OCR saved!")
+    return model,processor
+
+
 # load stable diffustion
 
 
@@ -354,7 +377,26 @@ def load_pipeline():
     return pipe
 
 
+def load_OCR():
+    if not os.path.exists(OCR_DIR):
+        print("OCR not found! Initializing and saving OCR Model first.")
+        return initialize_and_save_pipeline_ocr()
+   
+        
+    print("Loading OCR the pipeline...")
+    processor = TrOCRProcessor.from_pretrained(OCR_DIR)
+    model = VisionEncoderDecoderModel.from_pretrained(OCR_DIR)
+    pipe.to(device)
+    # pipe.to("cpu")  # Move to GPU for faster inference
+    print("Pipeline ocr loaded! ")
+    return model,processor
+
+
+
 pipe = load_pipeline()
+
+
+ocrmodel,ocrprocessor = load_OCR();
 
 
 @app.route("/read/gen/image", methods=["GET"])
@@ -379,6 +421,34 @@ def generate_image():
         print(f"Image saved to: {save_path}")
         # return image
         return jsonify({"message": "Image generated successfully", "image_path": save_path}), 200
+    except Exception as e:
+        return jsonify({"message": "Image generated Faild", "error": e}), 500
+
+
+@app.route("/read/verify/handwriting", methods=["POST"])
+def verfity_handwrite():
+    try:
+
+        if 'image' not in request.files:  # 👈 Ensure correct field name
+            return jsonify({"error": "No image uploaded"}), 404
+        
+
+        file = request.files['image'] 
+        
+       
+     # Default to Easy
+        image_url = "https://upload.wikimedia.org/wikipedia/commons/8/8e/Handwriting-sample.jpg"
+        image = Image.open(BytesIO(file.read())).convert("RGB")
+
+
+        pixel_values = ocrprocessor(images=image, return_tensors="pt").pixel_values.to(device)
+
+        with torch.no_grad():
+            generated_ids = ocrmodel.generate(pixel_values)
+    
+        text = ocrprocessor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        print("Recognized Text:", text)
+        return jsonify({"message": "verified sucessfully", "text": text}), 200
     except Exception as e:
         return jsonify({"message": "Image generated Faild", "error": e}), 500
 
@@ -409,6 +479,28 @@ def random_word():
         return jsonify({"word": random.choice(filtered_words), "difficulty": difficulty_level})
     else:
         return jsonify({"error": "No words found for the selected difficulty level"}), 400
+    
+
+@app.route("/read/gen/wlist", methods=["POST"])
+def random_word_list():
+    body = request.get_json();
+    difficulty_level = body.get(
+        'difficulty', 'Easy')
+    limit = body.get(
+        'limit', 10)
+     # Default to Easy
+    word_list = words.words()
+    filtered_words = [word for word in word_list if categorize_difficulty(
+        word) == difficulty_level]
+
+    if filtered_words:
+        word = [];
+        for _ in range(limit): 
+            word.append(random.choice(filtered_words))
+        return jsonify({"words": word, "difficulty": difficulty_level})
+    else:
+        return jsonify({"error": "No words found for the selected difficulty level"}), 400
+
 
 
 @app.route("/generate-shapes", methods=["POST"])
