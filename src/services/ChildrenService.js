@@ -50,6 +50,7 @@ const createChild = async (childDetails) => {
                     name: childDetails.name,
                     email: childDetails.email,
                     password: hashedPassword,
+                    type: childDetails.type,
                     profile_img: childDetails.profile_img,
                     parent_id: childDetails.parent_id,
                     address: childDetails.address,
@@ -233,7 +234,7 @@ function generateToken(child) {
     const secretKey = process.env.JWT_SECRET; // Use environment variable for the secret key
     const expiresIn = "1h"; // Token expiry time
     return jwt.sign(
-        { user: child.id, name: child.name, img: child.profile_img, level:child.level },
+        { user: child.id, name: child.name, img: child.profile_img, level:child.level,type:child.type },
         secretKey,
         { expiresIn }
     );
