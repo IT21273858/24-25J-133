@@ -21,6 +21,13 @@ import pickle
 from transformers import BertTokenizer,TrOCRProcessor, VisionEncoderDecoderModel
 import time
 
+from reading_component.RandomPassages.generatepassage import generateRadomPassage
+from reading_component.RandomWords.randomwords import getSingleWordMax, getSingleword
+from reading_component.RandomWords.verifyWords import calculate_cer
+from reading_component.fluencymeasure.checkFluency import calculate_CPM
+from reading_component.predictHandwrittings.handpredictEng import pedictEngHand
+from reading_component.speechtotext.stt import getTranscribe
+
 from visualprocessing import generate_gan_shape
 from visualprocessing import predict_new_shape
 from visualprocessing import gan_controller
@@ -174,6 +181,8 @@ print(f"Sample word sequence: {tokenizer.texts_to_sequences(['test']) if hasattr
 
 
 #  IMAGE PREDICTION
+
+
 
 
 # Preprocess the image for shape recognition
@@ -440,19 +449,20 @@ def verfity_handwrite():
         file = request.files['image'] 
         
        
-     # Default to Easy
-        image_url = "https://upload.wikimedia.org/wikipedia/commons/8/8e/Handwriting-sample.jpg"
-        image = Image.open(BytesIO(file.read())).convert("RGB")
+        # Default to Easy
+        result = pedictEngHand(BytesIO(file.read()))
+        # image_url = "https://upload.wikimedia.org/wikipedia/commons/8/8e/Handwriting-sample.jpg"
+        # image = Image.open(BytesIO(file.read())).convert("RGB")
 
 
-        pixel_values = ocrprocessor(images=image, return_tensors="pt").pixel_values.to(device)
+        # pixel_values = ocrprocessor(images=image, return_tensors="pt").pixel_values.to(device)
 
-        with torch.no_grad():
-            generated_ids = ocrmodel.generate(pixel_values)
+        # with torch.no_grad():
+        #     generated_ids = ocrmodel.generate(pixel_values)
     
-        text = ocrprocessor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        print("Recognized Text:", text)
-        return jsonify({"message": "verified sucessfully", "text": text}), 200
+        # text = ocrprocessor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        # print("Recognized Text:", text)
+        return jsonify({"message": "verified sucessfully", "result": result}), 200
     except Exception as e:
         return jsonify({"message": "Image generated Faild", "error": e}), 500
 
@@ -483,6 +493,7 @@ def random_word():
         return jsonify({"word": random.choice(filtered_words), "difficulty": difficulty_level})
     else:
         return jsonify({"error": "No words found for the selected difficulty level"}), 400
+
     
 
 @app.route("/read/gen/wlist", methods=["POST"])
@@ -680,6 +691,7 @@ def generate_word():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
     
 @app.route("/generate-and-predict", methods=["GET"])
 def generate_and_predict():
@@ -748,6 +760,91 @@ def generate_digit_sequence():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+
+#spell the word
+@app.route("/read/get-random-word",methods=["GET"])
+def getRandomWords():
+    try:
+        word= getSingleword();
+        return jsonify({
+            "word": word
+        })
+
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+
+#spell the word - 2
+@app.route("/read/verifyspeak",methods=["POST"])
+def verfySpeak():
+    try:
+        print("Verifing Speak")
+        body = request.get_json()
+        audiopath = body.get("audiopath","")
+        targetword = body.get("targetword","")
+        input= getTranscribe(audiopath);
+        cerscore = calculate_cer(target=targetword,input=input)
+        return jsonify({
+            "cer-rate": cerscore,
+            "transcriped":input,
+            "target":targetword
+        })
+
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#read the para
+@app.route("/read/get-random-passage",methods=["GET"])
+def getRandomPassages():
+    try:
+        passage= generateRadomPassage();
+        return jsonify({
+            "passage": passage
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+#read the para - 2
+@app.route("/read/verify-passage",methods=["POST"])
+def verifyPassages():
+    try:
+        body = request.get_json()
+        passage = body.get("passage","")
+        audiopath = body.get("audiopath","")
+        result=calculate_CPM(
+            audiopath=audiopath,
+            targetText=passage
+        );
+        return jsonify({
+            "result": result
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/read/get-random-word-max",methods=["POST"])
+def getRandomWordswithMax():
+    try:
+        body = request.get_json()
+        limit = body.get("limit","")
+        word= getSingleWordMax(
+            limit=limit
+        );
+        return jsonify({
+            "word": word
+        })
+
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 
 
 # Visual processing GAN
