@@ -20,6 +20,10 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
 from transformers import BertTokenizer,TrOCRProcessor, VisionEncoderDecoderModel
 import time
+
+from visualprocessing import generate_gan_shape
+from visualprocessing import predict_new_shape
+from visualprocessing import gan_controller
 # Suppress TensorFlow logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -744,6 +748,30 @@ def generate_digit_sequence():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# Visual processing GAN
+@app.route("/generate-gan-shape", methods=["POST"])
+def generate_gan_shape_endpoint():
+    try:
+        data = request.get_json()
+        label_name = data.get("label")
+
+        image_base64, error = generate_gan_shape(label_name)
+        if error:
+            return jsonify({"error": error}), 400
+
+        return jsonify({"image_base64": image_base64})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+app.add_url_rule("/predict-new-shape", view_func=predict_new_shape, methods=["POST"])
+# Register GAN controller blueprint
+app.register_blueprint(gan_controller)
+
+
 
 if __name__ == "__main__":
     app.run(port=5000)

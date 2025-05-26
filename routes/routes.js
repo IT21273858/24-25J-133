@@ -11,6 +11,8 @@ const ChildrenController = require('../src/controllers/childrenController')
 const GameController = require('../src/controllers/gameController')
 const GameScoreController = require('../src/controllers/gameScoreController')
 const GenerateShapeController = require('../src/controllers/generateShapeController')
+const newShapeController = require('../src/controllers/generateShapeController');
+const ganShapeController = require('../src/controllers/generateShapeController');
 const router = express.Router();
 
 // Image Prediction Routes
@@ -30,6 +32,15 @@ router.get('/generate-word', predictWordController.getGenerateWord);
 
 // Digit Span Task Route
 router.get("/generate-digit-sequence", digitSpanTaskController.getDigitSpanTask);
+
+// Gan shape
+router.post("/generate-gan-shape", GenerateShapeController.getGenerateGANShape);
+
+// Gan Pattern preditcion
+router.post('/predict-new-shape', upload.single("image"), newShapeController.predictNewShape);
+
+
+router.post("/get-gan-shape", ganShapeController.getGANShape);
 
 
 // Parent Route
